@@ -1,0 +1,21 @@
+gridmod = {
+	tileSize = 32,
+	lineAlpha = 0.3,
+	r = 1.0,
+	g = 1.0,
+	b = 1.0,
+	showChunkLines = true,
+	chunkSpanTiles = 16,
+	chunkThickness = 2,
+	chunkAlpha = 1.0,
+	cr = 1.0,
+	cg = 0.55,
+	cb = 0.0,
+	showSubChunkLines = true,
+	subChunkSpanTiles = 4,
+	subChunkThickness = 1,
+	subChunkAlpha = 0.80000013,
+	scr = 0.3,
+	scg = 0.9,
+	scb = 1.0
+}

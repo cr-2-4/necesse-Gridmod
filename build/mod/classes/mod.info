@@ -1,0 +1,9 @@
+{
+	id = colox.gridmod,
+	name = GridMod,
+	version = 1.0,
+	gameVersion = 1.0.2,
+	author = Colox,
+	description = A Simple Grid system for QoL building.,
+	clientside = true
+}
