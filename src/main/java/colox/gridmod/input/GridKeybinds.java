@@ -6,7 +6,6 @@ import necesse.engine.input.Control;
 import necesse.engine.localization.message.StaticMessage;
 
 // ===========================================================================
-// File: colox/gridmod/input/GridKeybinds.java
 // PURPOSE: Single source of truth for ALL mod keybinds + per-frame polling.
 // Adds paint overlay toggle key:
 //   - PAINT_VIS_TOGGLE: toggles GridConfig.paintVisible (draw only).

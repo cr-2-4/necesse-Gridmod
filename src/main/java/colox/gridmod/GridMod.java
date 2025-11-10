@@ -3,12 +3,10 @@ package colox.gridmod;
 import colox.gridmod.config.GridConfig;
 import colox.gridmod.input.GridKeybinds;
 import colox.gridmod.paint.PaintState;
-// import colox.gridmod.ui.GridUI;
 import necesse.engine.modLoader.annotations.ModEntry;
 
 // ===========================================================================
 // ********** THIS IS TOP OF CLASS (VERY IMPORTANT) ***************************
-// File: colox/gridmod/GridMod.java
 // PURPOSE: Mod entry — register keybinds & load configs/state.
 // HOW TO JUMP AROUND:
 //   - Search: [init] for startup wiring.

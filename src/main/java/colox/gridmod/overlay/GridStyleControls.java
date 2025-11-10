@@ -2,7 +2,6 @@ package colox.gridmod.overlay;
 
 /*
 // ===========================================================================
- // File: colox/gridmod/overlay/GridStyleControls.java
  // PURPOSE: Handle style hotkeys and mutate GridConfig.
  // ===========================================================================
 */
