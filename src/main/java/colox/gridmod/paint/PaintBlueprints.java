@@ -12,7 +12,6 @@ import java.util.List;
 
 /*
 // ===========================================================================
-// File: colox/gridmod/paint/PaintBlueprints.java
 // PURPOSE: Relative + Global blueprint IO.
 // Phase 5 addition: saveSelectionAs(...) that saves from an arbitrary subset.
 // SEARCH ANCHORS:

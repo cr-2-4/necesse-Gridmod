@@ -2,7 +2,6 @@ package colox.gridmod.overlay;
 
 /*
 // ===========================================================================
-// File: colox/gridmod/overlay/GridToggle.java
 // PURPOSE: Handle the main show/hide toggle of the grid. Single source of
 //          truth is GridConfig.gridEnabled so UI & hotkey stay in sync.
 // ===========================================================================

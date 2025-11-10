@@ -7,7 +7,6 @@ import necesse.level.maps.Level;
 
 /*
 // ===========================================================================
- // File: colox/gridmod/overlay/GridDrawable.java
  // PURPOSE: Render all grid lines. Also the ONE place we poll hotkeys per-frame.
  // NOTES:
  //   *** We call GridKeybinds.poll() at the very top (main thread, every frame).
