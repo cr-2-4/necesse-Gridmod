@@ -17,8 +17,8 @@ import necesse.gfx.forms.components.FormInputSize;
 import necesse.gfx.forms.components.FormLabel;
 import necesse.gfx.forms.components.FormSlider;
 import necesse.gfx.forms.components.FormTextButton;
-import necesse.gfx.forms.components.FormContentIconButton;
 import necesse.gfx.forms.components.FormContentButton;
+import necesse.gfx.forms.components.FormContentIconButton;
 import necesse.gfx.forms.components.localComponents.FormLocalTextButton;
 import necesse.gfx.forms.components.FormComponent;
 import necesse.gfx.forms.events.FormEventListener;
@@ -29,6 +29,7 @@ import necesse.gfx.ui.ButtonColor;
 
 import colox.gridmod.config.GridConfig;
 import colox.gridmod.paint.PaintControls;
+import colox.gridmod.paint.PaintCategory;
 
 /**
  * GridUIForm
@@ -45,7 +46,7 @@ public class GridUIForm extends Form {
     private static final int M = 12;
     private static final int LINE = 30;
 
-    private enum Tab { GRID, PAINT, SETTLEMENT, GRID_COLORS, BP_COLORS, SETTLEMENT_COLORS }
+    private enum Tab { GRID, PAINT, SETTLEMENT, GRID_COLORS, BP_COLORS, SETTLEMENT_COLORS, PAINT_CATEGORY_COLORS }
     private Tab activeTab = Tab.GRID;
 
     // Content boxes
@@ -54,7 +55,14 @@ public class GridUIForm extends Form {
     private FormContentBox settlementBox;
     private FormContentBox gridColorsBox;
     private FormContentBox bpColorsBox;
+    private FormContentBox categoryColorsBox;
     private FormContentBox settlementColorsBox;
+
+    private FormDropdownSelectionButton<String> categoryColorSelector;
+    private FormSlider categoryColorRSlider, categoryColorGSlider, categoryColorBSlider, categoryColorASlider;
+    private ColorPreview categoryColorPreview;
+    private PaintCategory editingCategoryForSettings;
+    private boolean categorySlidersUpdating = false;
 
     // --- Settlement controls (non-color) ---
     private FormDropdownSelectionButton<String> settlementModeDD;
@@ -113,19 +121,52 @@ public class GridUIForm extends Form {
         }
     }
 
+    /** Non-interactive swatch used for previews. */
+    private static final class ColorPreview extends FormCustomDraw {
+        private java.awt.Color fill;
+        public ColorPreview(int x, int y, int width, int height, java.awt.Color initial) {
+            super(x, y, width, height);
+            this.canBePutOnTopByClick = false;
+            this.zIndex = Integer.MIN_VALUE / 4;
+            this.fill = (initial == null) ? java.awt.Color.WHITE : initial;
+        }
+        public void setColor(java.awt.Color color) {
+            if (color != null) this.fill = color;
+        }
+        @Override public boolean shouldUseMouseEvents() { return false; }
+        @Override public java.util.List<java.awt.Rectangle> getHitboxes() { return java.util.Collections.emptyList(); }
+        @Override
+        public void draw(necesse.engine.gameLoop.tickManager.TickManager tm, necesse.entity.mobs.PlayerMob perspective, java.awt.Rectangle renderBox) {
+            if (fill == null) return;
+            java.awt.Color border = this.getInterfaceStyle().activeTextColor;
+            Renderer.initQuadDraw(this.width, this.height).color(fill).draw(this.getX(), this.getY());
+            Renderer.initQuadDraw(this.width, 1).color(border).draw(this.getX(), this.getY());
+            Renderer.initQuadDraw(this.width, 1).color(border).draw(this.getX(), this.getY() + this.height - 1);
+            Renderer.initQuadDraw(1, this.height).color(border).draw(this.getX(), this.getY());
+            Renderer.initQuadDraw(1, this.height).color(border).draw(this.getX() + this.width - 1, this.getY());
+        }
+    }
+
     /** Small square button that renders a solid color inside its content area. */
     private static final class ColorButton extends FormContentButton {
-        private final java.awt.Color fill;
+        private float rf, gf, bf;
+
         public ColorButton(int x, int y, int size, float r, float g, float b) {
             super(x, y, size, FormInputSize.SIZE_24, ButtonColor.BASE);
-            int rr = Math.max(0, Math.min(255, Math.round(r * 255f)));
-            int gg = Math.max(0, Math.min(255, Math.round(g * 255f)));
-            int bb = Math.max(0, Math.min(255, Math.round(b * 255f)));
-            this.fill = new java.awt.Color(rr, gg, bb);
+            setColor(r, g, b);
         }
-        // Draws solid color inside button content rect
+
+        public void setColor(float r, float g, float b) {
+            this.rf = clamp01(r);
+            this.gf = clamp01(g);
+            this.bf = clamp01(b);
+        }
+
+        @Override
         protected void drawContent(int x, int y, int w, int h) {
-            Renderer.initQuadDraw(w - 6, h - 6).color(fill).draw(x + 3, y + 3);
+            Renderer.initQuadDraw(Math.max(2, w - 6), Math.max(2, h - 6))
+                    .color(rf, gf, bf, 1f)
+                    .draw(x + 3, y + 3);
         }
     }
 
@@ -193,6 +234,10 @@ public class GridUIForm extends Form {
         bpColorsBox.alwaysShowVerticalScrollBar = true;
         this.addComponent(bpColorsBox);
 
+        categoryColorsBox = new FormContentBox(boxX, boxY, boxW, boxH);
+        categoryColorsBox.alwaysShowVerticalScrollBar = true;
+        this.addComponent(categoryColorsBox);
+
         settlementColorsBox = new FormContentBox(boxX, boxY, boxW, boxH);
         settlementColorsBox.alwaysShowVerticalScrollBar = true;
         this.addComponent(settlementColorsBox);
@@ -202,13 +247,14 @@ public class GridUIForm extends Form {
         settlementBox.setHidden(true);
         gridColorsBox.setHidden(true);
         bpColorsBox.setHidden(true);
+        categoryColorsBox.setHidden(true);
         settlementColorsBox.setHidden(true);
 
         // ======== GRID tab (delegated) ========
         new GridTab(gridBox, v -> this.drawBaseAlpha = v, () -> switchTab(Tab.GRID_COLORS));
 
         // ======== PAINT tab ========
-        new PaintTab(paintBox, () -> switchTab(Tab.BP_COLORS));
+        new PaintTab(paintBox, () -> switchTab(Tab.BP_COLORS), () -> switchTab(Tab.PAINT_CATEGORY_COLORS));
 
         // ======== SETTLEMENT (non-color) ========
         buildSettlementContent();
@@ -216,6 +262,7 @@ public class GridUIForm extends Form {
         // ======== COLORS ========
         buildGridColorsContent();
         buildBlueprintColorsContent();
+        buildPaintCategoryColorsContent();
         buildSettlementColorsContent();
     }
 
@@ -276,6 +323,7 @@ public class GridUIForm extends Form {
         settlementBox.setHidden(!(activeTab == Tab.SETTLEMENT));
         gridColorsBox.setHidden(!(activeTab == Tab.GRID_COLORS));
         bpColorsBox.setHidden(!(activeTab == Tab.BP_COLORS));
+        categoryColorsBox.setHidden(!(activeTab == Tab.PAINT_CATEGORY_COLORS));
         settlementColorsBox.setHidden(!(activeTab == Tab.SETTLEMENT_COLORS));
     }
 
@@ -485,20 +533,6 @@ public class GridUIForm extends Form {
             final float prR = PALETTE[i][0], prG = PALETTE[i][1], prB = PALETTE[i][2];
             ColorButton b = addTo(gridColorsBox, new ColorButton(swX, swY, sw, prR, prG, prB));
             b.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> { GridConfig.r = prR; GridConfig.g = prG; GridConfig.b = prB; GridConfig.markDirty(); GridConfig.saveIfDirty(); });
-            addTo(gridColorsBox, new FormCustomDraw(swX+3, swY+3, sw-6, sw-6) {
-                { this.canBePutOnTopByClick = false; }
-                @Override public boolean shouldUseMouseEvents() { return false; }
-                @Override public java.util.List<java.awt.Rectangle> getHitboxes() { return Collections.emptyList(); }
-                @Override public void draw(necesse.engine.gameLoop.tickManager.TickManager tm, necesse.entity.mobs.PlayerMob p, java.awt.Rectangle rbox) {
-                    java.awt.Color fill = new java.awt.Color(Math.round(prR*255), Math.round(prG*255), Math.round(prB*255));
-                    java.awt.Color border = getInterfaceStyle().activeTextColor;
-                    Renderer.initQuadDraw(this.width, this.height).color(fill).draw(this.getX(), this.getY());
-                    Renderer.initQuadDraw(this.width, 1).color(border).draw(this.getX(), this.getY());
-                    Renderer.initQuadDraw(this.width, 1).color(border).draw(this.getX(), this.getY()+this.height-1);
-                    Renderer.initQuadDraw(1, this.height).color(border).draw(this.getX(), this.getY());
-                    Renderer.initQuadDraw(1, this.height).color(border).draw(this.getX()+this.width-1, this.getY());
-                }
-            });
             if ((i+1) % perRow == 0) { swX = gx; swY += sw + swGap; } else { swX += sw + swGap; }
         }
         gy = swY + sw + 10;
@@ -548,20 +582,6 @@ public class GridUIForm extends Form {
             final float prR = PALETTE[i][0], prG = PALETTE[i][1], prB = PALETTE[i][2];
             ColorButton b = addTo(gridColorsBox, new ColorButton(swX, swY, sw, prR, prG, prB));
             b.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> { GridConfig.cr = prR; GridConfig.cg = prG; GridConfig.cb = prB; GridConfig.markDirty(); GridConfig.saveIfDirty(); });
-            addTo(gridColorsBox, new FormCustomDraw(swX+3, swY+3, sw-6, sw-6) {
-                { this.canBePutOnTopByClick = false; }
-                @Override public boolean shouldUseMouseEvents() { return false; }
-                @Override public java.util.List<java.awt.Rectangle> getHitboxes() { return Collections.emptyList(); }
-                @Override public void draw(necesse.engine.gameLoop.tickManager.TickManager tm, necesse.entity.mobs.PlayerMob p, java.awt.Rectangle rbox) {
-                    java.awt.Color fill = new java.awt.Color(Math.round(prR*255), Math.round(prG*255), Math.round(prB*255));
-                    java.awt.Color border = getInterfaceStyle().activeTextColor;
-                    Renderer.initQuadDraw(this.width, this.height).color(fill).draw(this.getX(), this.getY());
-                    Renderer.initQuadDraw(this.width, 1).color(border).draw(this.getX(), this.getY());
-                    Renderer.initQuadDraw(this.width, 1).color(border).draw(this.getX(), this.getY()+this.height-1);
-                    Renderer.initQuadDraw(1, this.height).color(border).draw(this.getX(), this.getY());
-                    Renderer.initQuadDraw(1, this.height).color(border).draw(this.getX()+this.width-1, this.getY());
-                }
-            });
             if ((i+1) % perRow == 0) { swX = gx; swY += sw + swGap; } else { swX += sw + swGap; }
         }
         gy = swY + sw + 10;
@@ -875,6 +895,92 @@ public class GridUIForm extends Form {
         bpColorsBox.fitContentBoxToComponents(6);
     }
 
+    private void buildPaintCategoryColorsContent() {
+        final int inner = categoryColorsBox.getMinContentWidth();
+        final int usableRow = (inner - (CARD_X * 2)) - (CARD_PAD_X * 2);
+        int y = 0;
+
+        FormLocalTextButton back = addTo(categoryColorsBox, new FormLocalTextButton("ui", "backbutton", CARD_X + CARD_PAD_X, y, 120, FormInputSize.SIZE_24, ButtonColor.BASE));
+        back.onClicked(e -> switchTab(Tab.PAINT));
+        y += FormInputSize.SIZE_24.height + 8;
+
+        SectionCard card = addCard(categoryColorsBox, y, inner);
+        int cx = CARD_X + CARD_PAD_X;
+        int cy = y + CARD_PAD_Y;
+
+        addTo(categoryColorsBox, new FormLabel("Paint categories", new FontOptions(16), FormLabel.ALIGN_LEFT, cx, cy));
+        cy += LINE - 10;
+
+        addTo(categoryColorsBox, new FormLabel("Category:", new FontOptions(12), FormLabel.ALIGN_LEFT, cx, cy));
+        int ddW = Math.max(220, usableRow - 150);
+        categoryColorSelector = addTo(categoryColorsBox, new FormDropdownSelectionButton<>(cx + 90, cy - 2, FormInputSize.SIZE_24, ButtonColor.BASE, ddW));
+        for (PaintCategory cat : PaintCategory.values()) {
+            categoryColorSelector.options.add(cat.id(), new StaticMessage(cat.label()));
+        }
+        PaintCategory startCat = GridConfig.getActivePaintCategory();
+        categoryColorSelector.setSelected(startCat.id(), new StaticMessage(startCat.label()));
+        categoryColorSelector.onSelected(e -> {
+            PaintCategory selected = PaintCategory.byId(e.value);
+            GridConfig.setActivePaintCategory(selected);
+            selectCategory(selected);
+        });
+        cy += FormInputSize.SIZE_24.height + 10;
+
+        final int previewW = 120, previewH = 18;
+        int previewX = cx + Math.max(220, usableRow) - previewW;
+        categoryColorPreview = addTo(categoryColorsBox,
+                new ColorPreview(previewX, cy, previewW, previewH, paintColorToAwt(GridConfig.getPaintColor(startCat))));
+        cy += previewH + 10;
+
+        int sliderW = Math.max(220, usableRow);
+        categoryColorRSlider = addTo(categoryColorsBox, new FormSlider("Red", cx, cy,
+                Math.round(GridConfig.getPaintColor(startCat).r * 100f), 0, 100, sliderW));
+        categoryColorRSlider.drawValue = true; categoryColorRSlider.drawValueInPercent = true;
+        categoryColorRSlider.onChanged(e -> updatePaintCategoryFromSliders());
+        cy += categoryColorRSlider.getTotalHeight() + 6;
+
+        categoryColorGSlider = addTo(categoryColorsBox, new FormSlider("Green", cx, cy,
+                Math.round(GridConfig.getPaintColor(startCat).g * 100f), 0, 100, sliderW));
+        categoryColorGSlider.drawValue = true; categoryColorGSlider.drawValueInPercent = true;
+        categoryColorGSlider.onChanged(e -> updatePaintCategoryFromSliders());
+        cy += categoryColorGSlider.getTotalHeight() + 6;
+
+        categoryColorBSlider = addTo(categoryColorsBox, new FormSlider("Blue", cx, cy,
+                Math.round(GridConfig.getPaintColor(startCat).b * 100f), 0, 100, sliderW));
+        categoryColorBSlider.drawValue = true; categoryColorBSlider.drawValueInPercent = true;
+        categoryColorBSlider.onChanged(e -> updatePaintCategoryFromSliders());
+        cy += categoryColorBSlider.getTotalHeight() + 6;
+
+        categoryColorASlider = addTo(categoryColorsBox, new FormSlider("Alpha", cx, cy,
+                Math.round(GridConfig.getPaintColor(startCat).a * 100f), 0, 100, sliderW));
+        categoryColorASlider.drawValue = true; categoryColorASlider.drawValueInPercent = true;
+        categoryColorASlider.onChanged(e -> updatePaintCategoryFromSliders());
+        cy += categoryColorASlider.getTotalHeight() + 10;
+
+        int sw = 24, swGap = 4;
+        int swX = cx;
+        int swY = cy;
+        int perRow = Math.max(6, Math.min(10, (usableRow / (sw + swGap))));
+        for (int i = 0; i < PALETTE.length; i++) {
+            final float prR = PALETTE[i][0], prG = PALETTE[i][1], prB = PALETTE[i][2];
+            ColorButton b = addTo(categoryColorsBox, new ColorButton(swX, swY, sw, prR, prG, prB));
+            b.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> applyCategoryPaletteColor(prR, prG, prB));
+            if ((i + 1) % perRow == 0) { swX = cx; swY += sw + swGap; }
+            else { swX += sw + swGap; }
+        }
+        cy = swY + sw + 12;
+
+        FormTextButton resetBtn = addTo(categoryColorsBox, new FormTextButton("Reset to default", cx, cy, 170,
+                FormInputSize.SIZE_24, ButtonColor.BASE));
+        resetBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> resetCategoryToDefault());
+        cy += FormInputSize.SIZE_24.height + 10;
+
+        finishCard(card, cy);
+        categoryColorsBox.fitContentBoxToComponents(6);
+
+        selectCategory(startCat);
+    }
+
     // ---------- SETTLEMENT COLORS ----------
     private void buildSettlementColorsContent() {
         final int inner = settlementColorsBox.getMinContentWidth();
@@ -1005,6 +1111,63 @@ public class GridUIForm extends Form {
     }
     private void refreshSettlementInfoIfTier(int tier) {
         if (GridConfig.settlementTier == tier) refreshSettlementInfo();
+    }
+
+    private void selectCategory(PaintCategory category) {
+        PaintCategory cat = (category == null) ? PaintCategory.TILES : category;
+        editingCategoryForSettings = cat;
+        if (categoryColorSelector != null) {
+            categoryColorSelector.setSelected(cat.id(), new StaticMessage(cat.label()));
+        }
+        GridConfig.setActivePaintCategory(cat);
+        updateSlidersFromCategory(cat);
+    }
+
+    private void updateSlidersFromCategory(PaintCategory category) {
+        if (category == null) return;
+        GridConfig.PaintColor color = GridConfig.getPaintColor(category);
+        categorySlidersUpdating = true;
+        if (categoryColorRSlider != null) categoryColorRSlider.setValue(Math.round(color.r * 100f));
+        if (categoryColorGSlider != null) categoryColorGSlider.setValue(Math.round(color.g * 100f));
+        if (categoryColorBSlider != null) categoryColorBSlider.setValue(Math.round(color.b * 100f));
+        if (categoryColorASlider != null) categoryColorASlider.setValue(Math.round(color.a * 100f));
+        categorySlidersUpdating = false;
+        if (categoryColorPreview != null) categoryColorPreview.setColor(paintColorToAwt(color));
+    }
+
+    private void updatePaintCategoryFromSliders() {
+        if (categorySlidersUpdating || editingCategoryForSettings == null) return;
+        float r = categoryColorRSlider.getValue() / 100f;
+        float g = categoryColorGSlider.getValue() / 100f;
+        float b = categoryColorBSlider.getValue() / 100f;
+        float a = categoryColorASlider.getValue() / 100f;
+        GridConfig.setPaintColor(editingCategoryForSettings, r, g, b, a);
+        if (categoryColorPreview != null) categoryColorPreview.setColor(new java.awt.Color(Math.max(0, Math.min(255, Math.round(r * 255f))),
+                Math.max(0, Math.min(255, Math.round(g * 255f))),
+                Math.max(0, Math.min(255, Math.round(b * 255f))),
+                Math.max(0, Math.min(255, Math.round(a * 255f)))));
+    }
+
+    private void applyCategoryPaletteColor(float r, float g, float b) {
+        if (editingCategoryForSettings == null) return;
+        float a = categoryColorASlider.getValue() / 100f;
+        GridConfig.setPaintColor(editingCategoryForSettings, r, g, b, a);
+        updateSlidersFromCategory(editingCategoryForSettings);
+    }
+
+    private void resetCategoryToDefault() {
+        if (editingCategoryForSettings == null) return;
+        PaintCategory cat = editingCategoryForSettings;
+        GridConfig.setPaintColor(cat, cat.defaultR(), cat.defaultG(), cat.defaultB(), cat.defaultA());
+        updateSlidersFromCategory(cat);
+    }
+
+    private java.awt.Color paintColorToAwt(GridConfig.PaintColor color) {
+        if (color == null) return new java.awt.Color(255, 255, 255, 255);
+        return new java.awt.Color(Math.max(0, Math.min(255, Math.round(color.r * 255f))),
+                Math.max(0, Math.min(255, Math.round(color.g * 255f))),
+                Math.max(0, Math.min(255, Math.round(color.b * 255f))),
+                Math.max(0, Math.min(255, Math.round(color.a * 255f))));
     }
 
     private static float clamp01(float v) { return v < 0f ? 0f : (v > 1f ? 1f : v); }

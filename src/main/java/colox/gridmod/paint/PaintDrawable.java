@@ -30,8 +30,9 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         final int tileSize = GridConfig.tileSize;
 
         // Colors from config
-        final float pA = GridConfig.paintAlpha;
-        final float pR = GridConfig.paintR, pG = GridConfig.paintG, pB = GridConfig.paintB;
+        GridConfig.PaintColor paintColor = GridConfig.getPaintColor(GridConfig.getActivePaintCategory());
+        final float pA = paintColor.a;
+        final float pR = paintColor.r, pG = paintColor.g, pB = paintColor.b;
         final float eA = GridConfig.eraseAlpha;
         final float eR = GridConfig.eraseR, eG = GridConfig.eraseG, eB = GridConfig.eraseB;
         final float sA = GridConfig.selectionAlpha;
