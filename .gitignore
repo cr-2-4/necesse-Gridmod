@@ -22,3 +22,31 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# --- Gridmod / Gradle / IDE extras ---
+
+# Keep the Gradle Wrapper JAR even though *.jar is ignored above
+!gradle/wrapper/gradle-wrapper.jar
+
+# Build outputs (should not be committed)
+/bin/
+/build/
+/out/
+/dist/
+/run/
+
+# Gradle cache (keep the wrapper scripts and wrapper dir)
+/.gradle/
+
+# IDE files
+/.idea/
+/.vscode/
+/*.iml
+/.classpath
+/.project
+/.settings/
+/necesse-Gridmod/.settings/
+/Necesse-Gridmod/.settings/
+
+# Logs
+/latest-crash.log
