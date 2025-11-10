@@ -14,6 +14,7 @@ import necesse.gfx.forms.components.FormCheckBox;
 import necesse.gfx.forms.components.FormContentBox;
 import necesse.gfx.forms.components.FormCustomDraw;
 import necesse.gfx.forms.components.FormDropdownSelectionButton;
+import necesse.gfx.forms.components.FormContentIconButton;
 import necesse.gfx.forms.components.FormFairTypeLabel;
 import necesse.gfx.forms.components.FormInputSize;
 import necesse.gfx.forms.components.FormLabel;
@@ -80,6 +81,7 @@ public class PaintTab {
     }
 
     private final FormContentBox box;
+    private final Runnable openBPColors;
 
     // Paint basics
     private FormCheckBox  paintEnableCheck;
@@ -126,8 +128,9 @@ public class PaintTab {
     private long bpStatusClearAtMs = 0L;
     private long gbpStatusClearAtMs = 0L;
 
-    public PaintTab(FormContentBox box) {
+    public PaintTab(FormContentBox box, Runnable openBPColors) {
         this.box = box;
+        this.openBPColors = (openBPColors == null) ? () -> {} : openBPColors;
         build();
     }
 
@@ -159,6 +162,10 @@ public class PaintTab {
         int pY = py + CARD_PAD_Y;
 
         add(new FormLabel("Paint basics", new FontOptions(16), FormLabel.ALIGN_LEFT, px, pY), px, pY);
+        // Inline cog to open paint/blueprint color options
+        int cogX = px + 220;
+        add(new FormContentIconButton(cogX, pY - 4, FormInputSize.SIZE_24, ButtonColor.BASE, box.getInterfaceStyle().config_button_32), cogX, pY - 4)
+            .onClicked(e -> this.openBPColors.run());
         pY += LINE - 6;
 
         // NEW: visual-only toggle for paint layer visibility

@@ -6,6 +6,7 @@ import java.util.function.Consumer;
 import necesse.engine.localization.message.StaticMessage;
 import necesse.gfx.forms.components.*;
 import necesse.gfx.forms.position.FormFixedPosition;
+import necesse.gfx.forms.components.FormContentIconButton;
 import necesse.gfx.gameFont.FontOptions;
 import necesse.gfx.ui.ButtonColor;
 
@@ -34,9 +35,11 @@ final class GridTab {
     private FormSlider   subAlphaSlider;
 
     private final Consumer<Float> onUiOpacityChanged;
+    private final Runnable openGridColors;
 
-    GridTab(FormContentBox box, Consumer<Float> onUiOpacityChanged) {
+    GridTab(FormContentBox box, Consumer<Float> onUiOpacityChanged, Runnable openGridColors) {
         this.onUiOpacityChanged = (onUiOpacityChanged == null) ? v -> {} : onUiOpacityChanged;
+        this.openGridColors = (openGridColors == null) ? () -> {} : openGridColors;
         build(box);
     }
 
@@ -61,6 +64,10 @@ final class GridTab {
 
         gridEnableCheck = add(box, new FormCheckBox("Enable grid", gx, gy, GridToggle.isEnabled()), gx, gy);
         gridEnableCheck.onClicked(e -> GridToggle.setEnabled(((FormCheckBox)e.from).checked));
+        // Inline cog to open Grid Colors
+        int cogX = gx + 220;
+        FormContentIconButton gridCog = add(box, new FormContentIconButton(cogX, gy - 4, FormInputSize.SIZE_24, ButtonColor.BASE, box.getInterfaceStyle().config_button_32), cogX, gy - 4);
+        gridCog.onClicked(e -> this.openGridColors.run());
         gy += LINE;
 
         int sliderWidth = Math.max(180, innerWidth - (CARD_X * 2) - (gx - CARD_X));

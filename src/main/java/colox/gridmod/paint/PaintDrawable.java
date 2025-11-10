@@ -13,6 +13,7 @@ import java.awt.Point;
 import java.util.List;
 
 public class PaintDrawable implements necesse.gfx.drawables.Drawable {
+    @SuppressWarnings("unused")
     private final Level level;
     private final GameCamera camera;
 
