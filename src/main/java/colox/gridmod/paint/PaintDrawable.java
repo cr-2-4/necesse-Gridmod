@@ -1,7 +1,10 @@
 package colox.gridmod.paint;
 
 import colox.gridmod.config.GridConfig;
+import colox.gridmod.input.GridKeybinds;
 import necesse.engine.gameLoop.tickManager.TickManager;
+import necesse.engine.input.Input;
+import necesse.engine.window.WindowManager;
 import necesse.gfx.GameResources;
 import necesse.gfx.camera.GameCamera;
 import necesse.level.maps.Level;
@@ -20,12 +23,20 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
 
     @Override
     public void draw(TickManager tickManager) {
-        // ADDED: visibility gate (also gated in hook, this is just extra safety)
+        // Safety: visibility gate (also gated in hook)
         if (!GridConfig.paintVisible) return;
 
         final int tileSize = GridConfig.tileSize;
-        float a = PaintState.a;
-        float r = PaintState.r, g = PaintState.g, b = PaintState.b;
+
+        // Colors from config
+        final float pA = GridConfig.paintAlpha;
+        final float pR = GridConfig.paintR, pG = GridConfig.paintG, pB = GridConfig.paintB;
+        final float eA = GridConfig.eraseAlpha;
+        final float eR = GridConfig.eraseR, eG = GridConfig.eraseG, eB = GridConfig.eraseB;
+        final float sA = GridConfig.selectionAlpha;
+        final float sR = GridConfig.selectionR, sG = GridConfig.selectionG, sB = GridConfig.selectionB;
+        final float gA = GridConfig.bpGhostAlpha;
+        final float gR = GridConfig.bpGhostR, gG = GridConfig.bpGhostG, gB = GridConfig.bpGhostB;
 
         int camX = camera.getX();
         int camY = camera.getY();
@@ -36,7 +47,7 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         int endTileX   = (camX + viewW) / tileSize + 1;
         int endTileY   = (camY + viewH) / tileSize + 1;
 
-        // committed paint
+        // committed paint tiles
         for (long[] p : PaintState.iterateSnapshot()) {
             int tx = (int)p[0];
             int ty = (int)p[1];
@@ -47,7 +58,7 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
             GameResources.empty.initDraw()
                 .size(tileSize, tileSize)
                 .pos(px, py, false)
-                .color(r, g, b, a)
+                .color(pR, pG, pB, pA)
                 .draw();
         }
 
@@ -64,11 +75,31 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                 int w = s * tileSize;
                 int h = s * tileSize;
 
-                float oa = Math.min(1f, a + 0.2f);
-                GameResources.empty.initDraw().size(w, 2).pos(x, y, false).color(r, g, b, oa).draw();
-                GameResources.empty.initDraw().size(w, 2).pos(x, y + h - 2, false).color(r, g, b, oa).draw();
-                GameResources.empty.initDraw().size(2, h).pos(x, y, false).color(r, g, b, oa).draw();
-                GameResources.empty.initDraw().size(2, h).pos(x + w - 2, y, false).color(r, g, b, oa).draw();
+                // If erase modifier or RMB is held, preview in erase color
+                boolean erasePreview = false;
+                try {
+                    Input input = WindowManager.getWindow() != null ? WindowManager.getWindow().getInput() : null;
+                    if (input != null) {
+                        // Right mouse held
+                        try { if (input.isKeyDown(-99) || input.isPressed(-99)) erasePreview = true; } catch (Throwable ignored) {}
+                        // Erase mod key held
+                        int eraseKey = (GridKeybinds.PAINT_ERASE_MOD != null) ? GridKeybinds.PAINT_ERASE_MOD.getKey() : -1;
+                        if (eraseKey != -1) {
+                            try { if (input.isKeyDown(eraseKey)) erasePreview = true; } catch (Throwable ignored) {}
+                        }
+                    }
+                } catch (Throwable ignored) {}
+
+                float rr = erasePreview ? eR : pR;
+                float gg = erasePreview ? eG : pG;
+                float bb = erasePreview ? eB : pB;
+                float aa = erasePreview ? eA : pA;
+                float oa = Math.min(1f, aa + 0.2f);
+
+                GameResources.empty.initDraw().size(w, 2).pos(x, y, false).color(rr, gg, bb, oa).draw();
+                GameResources.empty.initDraw().size(w, 2).pos(x, y + h - 2, false).color(rr, gg, bb, oa).draw();
+                GameResources.empty.initDraw().size(2, h).pos(x, y, false).color(rr, gg, bb, oa).draw();
+                GameResources.empty.initDraw().size(2, h).pos(x + w - 2, y, false).color(rr, gg, bb, oa).draw();
             }
         }
 
@@ -77,7 +108,6 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
             int[] anchor = MouseTileUtil.getMouseTile(tileSize);
             if (anchor != null) {
                 List<int[]> ghost = BlueprintPlacement.transformedAt(anchor[0], anchor[1]);
-                float ga = Math.min(1f, a + 0.25f);
                 for (int[] t : ghost) {
                     int tx = t[0], ty = t[1];
                     if (tx < startTileX || tx > endTileX || ty < startTileY || ty > endTileY) continue;
@@ -86,7 +116,7 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                     GameResources.empty.initDraw()
                         .size(tileSize, tileSize)
                         .pos(px, py, false)
-                        .color(r, g, b, ga)
+                        .color(gR, gG, gB, gA)
                         .draw();
                 }
             }
@@ -94,7 +124,6 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
 
         // selection highlight (selected cells after release)
         if (SelectionState.getSelectedCount() > 0) {
-            float ha = Math.min(1f, a + 0.35f);
             for (long[] p : SelectionState.getSelectedPoints()) {
                 int tx = (int)p[0], ty = (int)p[1];
                 if (tx < startTileX || tx > endTileX || ty < startTileY || ty > endTileY) continue;
@@ -103,14 +132,14 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                 GameResources.empty.initDraw()
                     .size(tileSize, tileSize)
                     .pos(px, py, false)
-                    .color(r, g, b, ha)
+                    .color(sR, sG, sB, sA)
                     .draw();
             }
         }
 
         // selection outline while dragging
         if (SelectionState.isActive() && SelectionState.isDragging()) {
-            float oa = Math.min(1f, a + 0.40f);
+            float oa = sA; // use configured selection alpha
             switch (SelectionState.getMode()) {
                 case RECT: {
                     int tx0 = SelectionState.getDragStartTx();
@@ -126,10 +155,10 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                     int w = (xmax - xmin + 1) * tileSize;
                     int h = (ymax - ymin + 1) * tileSize;
 
-                    GameResources.empty.initDraw().size(w, 2).pos(x, y, false).color(r, g, b, oa).draw();
-                    GameResources.empty.initDraw().size(w, 2).pos(x, y + h - 2, false).color(r, g, b, oa).draw();
-                    GameResources.empty.initDraw().size(2, h).pos(x, y, false).color(r, g, b, oa).draw();
-                    GameResources.empty.initDraw().size(2, h).pos(x + w - 2, y, false).color(r, g, b, oa).draw();
+                    GameResources.empty.initDraw().size(w, 2).pos(x, y, false).color(sR, sG, sB, oa).draw();
+                    GameResources.empty.initDraw().size(w, 2).pos(x, y + h - 2, false).color(sR, sG, sB, oa).draw();
+                    GameResources.empty.initDraw().size(2, h).pos(x, y, false).color(sR, sG, sB, oa).draw();
+                    GameResources.empty.initDraw().size(2, h).pos(x + w - 2, y, false).color(sR, sG, sB, oa).draw();
                     break;
                 }
                 case EDGE:
@@ -139,7 +168,7 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                         if (tx < startTileX || tx > endTileX || ty < startTileY || ty > endTileY) continue;
                         int x = tx * tileSize - camX;
                         int y = ty * tileSize - camY;
-                        drawCellEdges(x, y, tileSize, r, g, b, oa);
+                        drawCellEdges(x, y, tileSize, sR, sG, sB, oa);
                     }
                     break;
                 }
@@ -152,7 +181,7 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                         int ay = aP.y * tileSize - camY + tileSize / 2;
                         int bx = bP.x * tileSize - camX + tileSize / 2;
                         int by = bP.y * tileSize - camY + tileSize / 2;
-                        drawThickLine(ax, ay, bx, by, 2, r, g, b, oa);
+                        drawThickLine(ax, ay, bx, by, 2, sR, sG, sB, oa);
                     }
                     break;
                 }
