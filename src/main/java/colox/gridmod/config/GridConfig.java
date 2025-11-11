@@ -40,11 +40,14 @@ public final class GridConfig {
     public static float eraseR = 1.00f, eraseG = 0.35f, eraseB = 0.35f, eraseAlpha = 0.50f;
     public static float selectionR = 0.20f, selectionG = 0.80f, selectionB = 1.00f, selectionAlpha = 0.50f;
     public static float bpGhostR = 1.00f, bpGhostG = 1.00f, bpGhostB = 1.00f, bpGhostAlpha = 0.50f;
-    public static String activePaintCategory = PaintCategory.TILES.id();
+    public static String activePaintCategory = PaintCategory.defaultCategory().id();
+    public static boolean hoverLabelsEnabled = true;
     private static final HashMap<String, PaintColor> paintCategoryColors = new HashMap<>();
+    private static final HashMap<String, Boolean> hoverCategoryVisibility = new HashMap<>();
 
     static {
         resetPaintCategoryColors();
+        resetHoverCategoryVisibility();
     }
 
     public static String selectedBlueprint = "quick";
@@ -78,10 +81,6 @@ public final class GridConfig {
     private static final File CONFIG_FILE = ConfigPaths.settingsFile().toFile();
     private static boolean dirty = false;
 
-    static {
-        resetPaintCategoryColors();
-    }
-
     private GridConfig() {}
 
     public static void markDirty() { dirty = true; }
@@ -90,6 +89,7 @@ public final class GridConfig {
     public static void load() {
         try {
             resetPaintCategoryColors();
+            resetHoverCategoryVisibility();
             if (!CONFIG_FILE.exists()) { save(); return; }
             LoadData ld = new LoadData(CONFIG_FILE);
 
@@ -103,6 +103,19 @@ public final class GridConfig {
             b = ld.getFloat("b", b);
 
             paintVisible = ld.getBoolean("paintVisible", paintVisible);
+            hoverLabelsEnabled = ld.getBoolean("hoverLabelsEnabled", hoverLabelsEnabled);
+
+            String hoverStates = ld.getSafeString("hoverCategoryVisibility", "");
+            if (!hoverStates.isEmpty()) {
+                for (String part : hoverStates.split(";")) {
+                    if (part.isEmpty() || !part.contains("=")) continue;
+                    String[] kv = part.split("=", 2);
+                    PaintCategory cat = PaintCategory.byId(kv[0]);
+                    if (cat == null) continue;
+                    boolean enabled = !"0".equals(kv[1]);
+                    hoverCategoryVisibility.put(cat.id(), enabled);
+                }
+            }
 
             showChunkLines = ld.getBoolean("showChunkLines", showChunkLines);
             chunkSpanTiles = ld.getInt("chunkSpanTiles", chunkSpanTiles);
@@ -195,6 +208,13 @@ public final class GridConfig {
             sd.addFloat("r", r);  sd.addFloat("g", g);  sd.addFloat("b", b);
 
             sd.addBoolean("paintVisible", paintVisible);
+            sd.addBoolean("hoverLabelsEnabled", hoverLabelsEnabled);
+            StringBuilder hoverBuilder = new StringBuilder();
+            for (PaintCategory cat : PaintCategory.values()) {
+                boolean enabled = hoverCategoryVisibility.getOrDefault(cat.id(), Boolean.TRUE);
+                hoverBuilder.append(cat.id()).append('=').append(enabled ? '1' : '0').append(';');
+            }
+            sd.addSafeString("hoverCategoryVisibility", hoverBuilder.toString());
 
             sd.addBoolean("showChunkLines", showChunkLines);
             sd.addInt("chunkSpanTiles", chunkSpanTiles);
@@ -364,16 +384,46 @@ public final class GridConfig {
     }
 
     public static void setActivePaintCategory(PaintCategory category) {
-        if (category == null) category = PaintCategory.TILES;
+        if (category == null) category = PaintCategory.defaultCategory();
         if (!category.id().equals(activePaintCategory)) {
             activePaintCategory = category.id();
             markDirty();
         }
     }
 
+    public static boolean isHoverLabelsEnabled() {
+        return hoverLabelsEnabled;
+    }
+
+    public static void setHoverLabelsEnabled(boolean enabled) {
+        if (hoverLabelsEnabled != enabled) {
+            hoverLabelsEnabled = enabled;
+            markDirty();
+        }
+    }
+
+    public static boolean isHoverCategoryAllowed(PaintCategory category) {
+        if (category == null) category = PaintCategory.defaultCategory();
+        Boolean enabled = hoverCategoryVisibility.get(category.id());
+        return enabled == null ? true : enabled.booleanValue();
+    }
+
+    public static void setHoverCategoryAllowed(PaintCategory category, boolean allowed) {
+        if (category == null) category = PaintCategory.defaultCategory();
+        hoverCategoryVisibility.put(category.id(), allowed);
+        markDirty();
+    }
+
+    public static void resetHoverCategoryVisibility() {
+        hoverCategoryVisibility.clear();
+        for (PaintCategory cat : PaintCategory.values()) {
+            hoverCategoryVisibility.put(cat.id(), Boolean.TRUE);
+        }
+    }
+
     // ---------- Paint category helpers ----------
     public static PaintColor getPaintColor(PaintCategory category) {
-        if (category == null) category = PaintCategory.TILES;
+        if (category == null) category = PaintCategory.defaultCategory();
         PaintColor color = paintCategoryColors.get(category.id());
         if (color == null) {
             color = new PaintColor(category.defaultR(), category.defaultG(), category.defaultB(), category.defaultA());
@@ -383,7 +433,7 @@ public final class GridConfig {
     }
 
     public static void setPaintColor(PaintCategory category, float r, float g, float b, float a) {
-        if (category == null) category = PaintCategory.TILES;
+        if (category == null) category = PaintCategory.defaultCategory();
         paintCategoryColors.put(category.id(), new PaintColor(r, g, b, a));
         markDirty();
     }

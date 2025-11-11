@@ -6,7 +6,6 @@ import java.util.Locale;
  * Defines the selectable paint categories and their default colors.
  */
 public enum PaintCategory {
-    TILES("tiles", "Tiles (Ground/Walkable/Build-on)", 0.95f, 0.95f, 0.95f, 0.50f),
     FLOORS("floors", "Floors", 0.82f, 0.67f, 0.45f, 0.50f),
     TERRAIN("terrain", "Terrain", 0.40f, 0.60f, 0.25f, 0.50f),
     LIQUIDS("liquids", "Liquids", 0.20f, 0.45f, 0.90f, 0.50f),
@@ -60,12 +59,17 @@ public enum PaintCategory {
     public float defaultB() { return defB; }
     public float defaultA() { return defA; }
 
+    public static PaintCategory defaultCategory() {
+        return FLOORS;
+    }
+
     public static PaintCategory byId(String id) {
-        if (id == null || id.isEmpty()) return TILES;
+        if (id == null || id.isEmpty()) return defaultCategory();
         String needle = id.trim().toLowerCase(Locale.ROOT);
+        if ("tiles".equals(needle)) return FLOORS; // legacy alias
         for (PaintCategory cat : values()) {
             if (cat.id.equals(needle)) return cat;
         }
-        return TILES;
+        return defaultCategory();
     }
 }

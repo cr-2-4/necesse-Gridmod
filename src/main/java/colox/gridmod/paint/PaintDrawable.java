@@ -60,6 +60,7 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         PaintCategory hoverCategory = null;
         int hoverPx = 0;
         int hoverPy = 0;
+        boolean hoverMasterEnabled = GridConfig.isHoverLabelsEnabled();
         if (mouseTile != null) {
             PaintState.PaintEntry hovered = PaintState.getPaintEntry(mouseTile[0], mouseTile[1]);
             if (hovered != null) {
@@ -67,6 +68,9 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                 hoverPx = mouseTile[0] * tileSize - camX;
                 hoverPy = mouseTile[1] * tileSize - camY;
             }
+        }
+        if (hoverCategory != null && (!hoverMasterEnabled || !GridConfig.isHoverCategoryAllowed(hoverCategory))) {
+            hoverCategory = null;
         }
 
         // committed paint tiles

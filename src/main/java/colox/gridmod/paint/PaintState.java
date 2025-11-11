@@ -52,7 +52,7 @@ public final class PaintState {
 
     @Deprecated
     public static void add(int tx, int ty) {
-        add(tx, ty, colox.gridmod.paint.PaintCategory.TILES.id());
+        add(tx, ty, colox.gridmod.paint.PaintCategory.defaultCategory().id());
     }
 
     public static void remove(int tx, int ty) {
@@ -61,7 +61,7 @@ public final class PaintState {
 
     public static String getCategory(int tx, int ty) {
         String cat = painted.get(key(tx, ty));
-        return (cat == null) ? colox.gridmod.paint.PaintCategory.TILES.id() : cat;
+        return (cat == null) ? colox.gridmod.paint.PaintCategory.defaultCategory().id() : cat;
     }
 
     public static List<PaintEntry> iterateSnapshot() {
@@ -109,7 +109,7 @@ public final class PaintState {
                     if (xy.length < 2) continue;
                     int x = Integer.parseInt(xy[0].trim());
                     int y = Integer.parseInt(xy[1].trim());
-                    String cat = (xy.length >= 3) ? xy[2].trim() : colox.gridmod.paint.PaintCategory.TILES.id();
+                    String cat = (xy.length >= 3) ? xy[2].trim() : colox.gridmod.paint.PaintCategory.defaultCategory().id();
                     painted.put(key(x,y), normalizeCategory(cat));
                     parsed++;
                 }
@@ -165,7 +165,7 @@ public final class PaintState {
         public PaintEntry(int x, int y, String categoryId) {
             this.x = x;
             this.y = y;
-            this.categoryId = categoryId == null ? colox.gridmod.paint.PaintCategory.TILES.id() : categoryId;
+            this.categoryId = categoryId == null ? colox.gridmod.paint.PaintCategory.defaultCategory().id() : categoryId;
         }
     }
 }

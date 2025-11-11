@@ -3,6 +3,7 @@ package colox.gridmod.paint;
 import colox.gridmod.config.GridConfig;
 import colox.gridmod.input.GridKeybinds;
 import colox.gridmod.ui.GridUI; // UI-safe gate
+import colox.gridmod.ui.PaintQuickPaletteOverlay;
 import necesse.engine.input.Input;
 import necesse.engine.window.WindowManager;
 import necesse.gfx.camera.GameCamera;
@@ -23,6 +24,7 @@ public final class PaintControls {
     }
 
     public static void tick(Level level, GameCamera camera) {
+        PaintQuickPaletteOverlay.tick(PaintState.enabled);
         // UI-safe: If Grid UI is open, ignore all input (paint/placement/selection)
         if (GridUI.isOpen()) return;
 

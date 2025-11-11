@@ -1114,7 +1114,7 @@ public class GridUIForm extends Form {
     }
 
     private void selectCategory(PaintCategory category) {
-        PaintCategory cat = (category == null) ? PaintCategory.TILES : category;
+        PaintCategory cat = (category == null) ? PaintCategory.defaultCategory() : category;
         editingCategoryForSettings = cat;
         if (categoryColorSelector != null) {
             categoryColorSelector.setSelected(cat.id(), new StaticMessage(cat.label()));
