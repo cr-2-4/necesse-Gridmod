@@ -254,7 +254,7 @@ public class GridUIForm extends Form {
         new GridTab(gridBox, v -> this.drawBaseAlpha = v, () -> switchTab(Tab.GRID_COLORS));
 
         // ======== PAINT tab ========
-        new PaintTab(paintBox, () -> switchTab(Tab.BP_COLORS), () -> switchTab(Tab.PAINT_CATEGORY_COLORS));
+        new PaintTab(paintBox);
 
         // ======== SETTLEMENT (non-color) ========
         buildSettlementContent();
@@ -441,7 +441,7 @@ public class GridUIForm extends Form {
         sx = CARD_X + CARD_PAD_X;
         sy = y + CARD_PAD_Y;
 
-        addTo(settlementBox, new FormLabel("Manual sizes (tiles) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â applies only when Mode = manual", new FontOptions(14), FormLabel.ALIGN_LEFT, sx, sy));
+        addTo(settlementBox, new FormLabel("Manual sizes (tiles) - applies only when Mode = manual", new FontOptions(14), FormLabel.ALIGN_LEFT, sx, sy));
         sy += LINE - 8;
 
         int sliderW = Math.max(220, usableRow);
@@ -1107,7 +1107,7 @@ public class GridUIForm extends Form {
         if (settlementInfoLabel == null) return;
         int tiles = GridConfig.currentTierSideTiles();
         int chunks = Math.max(1, tiles / 16);
-        settlementInfoLabel.setText("Side: " + tiles + " tiles (" + chunks + "ÃƒÆ’Ã¢â‚¬â€16-tile chunks per side)");
+        settlementInfoLabel.setText("Side: " + tiles + " tiles (" + chunks + "x16-tile chunks per side)");
     }
     private void refreshSettlementInfoIfTier(int tier) {
         if (GridConfig.settlementTier == tier) refreshSettlementInfo();

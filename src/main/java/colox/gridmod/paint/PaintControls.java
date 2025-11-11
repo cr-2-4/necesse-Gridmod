@@ -77,6 +77,11 @@ public final class PaintControls {
             }
         }
 
+        boolean toggleClicked = PaintQuickPaletteOverlay.consumeToggleClick();
+        boolean uiHover = PaintQuickPaletteOverlay.isMouseOverUi() || isMouseOverFormManager();
+        boolean paletteExpanded = PaintQuickPaletteOverlay.isPaletteExpanded();
+        boolean uiBlock = toggleClicked || uiHover || paletteExpanded;
+
         // Placement mode
         boolean rightClickPress = input.isPressed(-99); // RIGHT-CLICK edge
         if (BlueprintPlacement.active) {
@@ -98,6 +103,10 @@ public final class PaintControls {
             }
 
             if (input.isPressed(-100)) {
+                if (uiBlock) {
+                    suppressPaintUntilLmbUp = true;
+                    return;
+                }
                 int tileSize = GridConfig.tileSize;
                 int[] tile = MouseTileUtil.getMouseTile(tileSize);
                 if (tile != null) {
@@ -110,20 +119,13 @@ public final class PaintControls {
                             + " tiles=" + abs.size() + " (multi-stamp active; RMB to cancel)");
                 }
             }
+            if (uiBlock) {
+                suppressPaintUntilLmbUp = true;
+            }
             return;
         }
 
-        if (PaintQuickPaletteOverlay.consumeToggleClick()) {
-            suppressPaintUntilLmbUp = true;
-            return;
-        }
-
-        if (PaintQuickPaletteOverlay.isMouseOverUi() || isMouseOverFormManager()) {
-            suppressPaintUntilLmbUp = true;
-            return;
-        }
-
-        if (PaintQuickPaletteOverlay.isPaletteExpanded()) {
+        if (uiBlock) {
             suppressPaintUntilLmbUp = true;
             return;
         }

@@ -1,6 +1,5 @@
 package colox.gridmod.ui;
 
-import java.util.Arrays;
 import java.util.function.Consumer;
 
 import necesse.engine.localization.message.StaticMessage;
@@ -26,11 +25,12 @@ final class GridTab {
     private FormSlider   uiOpacitySlider;
     private FormSlider   alphaSlider;
     private FormCheckBox chunkCheck;
-    private FormDropdownSelectionButton<String> chunkSpan;
+    private FormSlider   chunkSpanSlider;
     private FormSlider   chunkThickSlider;
     private FormSlider   chunkAlphaSlider;
 
     private FormCheckBox subChunkCheck;
+    private FormSlider   subChunkSpanSlider;
     private FormSlider   subThickSlider;
     private FormSlider   subAlphaSlider;
 
@@ -95,7 +95,7 @@ final class GridTab {
         gy += alphaSlider.getTotalHeight() + 10;
 
         UiParts.finishCard(cardBase, gy);
-        y = cardBase.getY() + cardBase.height + 10;
+        y = cardBase.getY() + cardBase.height + 14;
 
         // Card 2: Chunk lines
         UiParts.SectionCard cardChunk = addCard(box, y, innerWidth);
@@ -111,26 +111,19 @@ final class GridTab {
             GridConfig.markDirty(); GridConfig.saveIfDirty();
         });
 
-        int ddW = 160;
-        chunkSpan = add(box, new FormDropdownSelectionButton<>(gx + 220, gy - 2, FormInputSize.SIZE_24, ButtonColor.BASE, ddW), gx + 220, gy - 2);
-        chunkSpan.options.add("8",  new StaticMessage("Span: 8"));
-        chunkSpan.options.add("16", new StaticMessage("Span: 16"));
-        chunkSpan.options.add("32", new StaticMessage("Span: 32"));
-        chunkSpan.options.add("64", new StaticMessage("Span: 64"));
-        String curSpan = Integer.toString(GridConfig.chunkSpanTiles);
-        if (!Arrays.asList("8","16","32","64").contains(curSpan)) curSpan = "16";
-        chunkSpan.setSelected(curSpan, new StaticMessage("Span: " + curSpan));
-        chunkSpan.onSelected(e -> {
-            try {
-                int v = Integer.parseInt(e.value);
-                GridConfig.chunkSpanTiles = v;
-                GridConfig.subChunkSpanTiles = Math.max(2, v / 4);
-                GridConfig.markDirty(); GridConfig.saveIfDirty();
-            } catch (NumberFormatException ignored) {}
+        int sliderWidthChunk = Math.max(180, innerWidth - (CARD_X * 2) - (gx - CARD_X));
+        chunkSpanSlider = add(box, new FormSlider("Chunk span", gx, gy, GridConfig.chunkSpanTiles, 8, 64, sliderWidthChunk), gx, gy);
+        chunkSpanSlider.drawValue = true;
+        chunkSpanSlider.drawValueInPercent = false;
+        chunkSpanSlider.onChanged(e -> {
+            int v = ((FormSlider)e.from).getValue();
+            GridConfig.chunkSpanTiles = v;
+            GridConfig.subChunkSpanTiles = Math.max(2, v / 4);
+            GridConfig.markDirty(); GridConfig.saveIfDirty();
         });
-        gy += LINE;
+        gy += chunkSpanSlider.getTotalHeight() + 6;
 
-        chunkThickSlider = add(box, new FormSlider("Chunk thickness", gx, gy, GridConfig.chunkThickness, 1, 4, sliderWidth), gx, gy);
+        chunkThickSlider = add(box, new FormSlider("Chunk thickness", gx, gy, GridConfig.chunkThickness, 1, 4, sliderWidthChunk), gx, gy);
         chunkThickSlider.drawValue = true;
         chunkThickSlider.drawValueInPercent = false;
         chunkThickSlider.onChanged(e -> {
@@ -139,7 +132,7 @@ final class GridTab {
         });
         gy += chunkThickSlider.getTotalHeight() + 8;
 
-        chunkAlphaSlider = add(box, new FormSlider("Chunk alpha", gx, gy, Math.round(GridConfig.chunkAlpha * 100f), 0, 100, sliderWidth), gx, gy);
+        chunkAlphaSlider = add(box, new FormSlider("Chunk alpha", gx, gy, Math.round(GridConfig.chunkAlpha * 100f), 0, 100, sliderWidthChunk), gx, gy);
         chunkAlphaSlider.onChanged(e -> {
             GridConfig.chunkAlpha = clamp01(((FormSlider)e.from).getValue() / 100f);
             GridConfig.markDirty(); GridConfig.saveIfDirty();
@@ -147,7 +140,7 @@ final class GridTab {
         gy += chunkAlphaSlider.getTotalHeight() + 10;
 
         UiParts.finishCard(cardChunk, gy);
-        y = cardChunk.getY() + cardChunk.height + 10;
+        y = cardChunk.getY() + cardChunk.height + 14;
 
         // Card 3: Sub-chunk lines
         UiParts.SectionCard cardSub = addCard(box, y, innerWidth);
@@ -164,7 +157,17 @@ final class GridTab {
         });
         gy += LINE;
 
-        subThickSlider = add(box, new FormSlider("Sub-chunk thickness", gx, gy, GridConfig.subChunkThickness, 1, 3, sliderWidth), gx, gy);
+        int sliderWidthSub = Math.max(180, innerWidth - (CARD_X * 2) - (gx - CARD_X));
+        subChunkSpanSlider = add(box, new FormSlider("Sub-chunk span", gx, gy, GridConfig.subChunkSpanTiles, 4, 32, sliderWidthSub), gx, gy);
+        subChunkSpanSlider.drawValue = true;
+        subChunkSpanSlider.drawValueInPercent = false;
+        subChunkSpanSlider.onChanged(e -> {
+            GridConfig.subChunkSpanTiles = ((FormSlider)e.from).getValue();
+            GridConfig.markDirty(); GridConfig.saveIfDirty();
+        });
+        gy += subChunkSpanSlider.getTotalHeight() + 6;
+
+        subThickSlider = add(box, new FormSlider("Sub-chunk thickness", gx, gy, GridConfig.subChunkThickness, 1, 3, sliderWidthSub), gx, gy);
         subThickSlider.drawValue = true;
         subThickSlider.drawValueInPercent = false;
         subThickSlider.onChanged(e -> {

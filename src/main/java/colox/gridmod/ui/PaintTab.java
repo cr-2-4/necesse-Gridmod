@@ -14,7 +14,6 @@ import necesse.gfx.forms.components.FormCheckBox;
 import necesse.gfx.forms.components.FormContentBox;
 import necesse.gfx.forms.components.FormCustomDraw;
 import necesse.gfx.forms.components.FormDropdownSelectionButton;
-import necesse.gfx.forms.components.FormContentIconButton;
 import necesse.gfx.forms.components.FormFairTypeLabel;
 import necesse.gfx.forms.components.FormInputSize;
 import necesse.gfx.forms.components.FormLabel;
@@ -82,8 +81,6 @@ public class PaintTab {
     }
 
     private final FormContentBox box;
-    private final Runnable openBPColors;
-    private final Runnable openCategoryColors;
     private FormDropdownSelectionButton<String> paintCategorySelector;
 
     // Paint basics
@@ -131,10 +128,8 @@ public class PaintTab {
     private long bpStatusClearAtMs = 0L;
     private long gbpStatusClearAtMs = 0L;
 
-    public PaintTab(FormContentBox box, Runnable openBPColors, Runnable openCategoryColors) {
+    public PaintTab(FormContentBox box) {
         this.box = box;
-        this.openBPColors = (openBPColors == null) ? () -> {} : openBPColors;
-        this.openCategoryColors = (openCategoryColors == null) ? () -> {} : openCategoryColors;
         build();
     }
 
@@ -165,11 +160,7 @@ public class PaintTab {
         int px = CARD_X + CARD_PAD_X;
         int pY = py + CARD_PAD_Y;
 
-        add(new FormLabel("Paint basics", new FontOptions(16), FormLabel.ALIGN_LEFT, px, pY), px, pY);
-        // Inline cog to open paint/blueprint color options
-        int cogX = px + 220;
-        add(new FormContentIconButton(cogX, pY - 4, FormInputSize.SIZE_24, ButtonColor.BASE, box.getInterfaceStyle().config_button_32), cogX, pY - 4)
-            .onClicked(e -> this.openBPColors.run());
+        add(new FormLabel("Erase / Blueprint / Selection view options", new FontOptions(16), FormLabel.ALIGN_LEFT, px, pY), px, pY);
         pY += LINE - 6;
 
         // NEW: visual-only toggle for paint layer visibility
@@ -200,9 +191,6 @@ public class PaintTab {
             PaintCategory selected = PaintCategory.byId(e.value);
             GridConfig.setActivePaintCategory(selected);
         });
-        int categoryCogX = px + ddW + 8;
-        add(new FormContentIconButton(categoryCogX, pY - 4, FormInputSize.SIZE_24, ButtonColor.BASE, box.getInterfaceStyle().config_button_32), categoryCogX, pY - 4)
-            .onClicked(e -> this.openCategoryColors.run());
         pY += FormInputSize.SIZE_24.height + 10;
 
         int brushTrackWidth = Math.max(160, usableRow - 120);
@@ -736,7 +724,7 @@ public class PaintTab {
             case EDGE_FILL:  mode = "Lasso (edge+fill)"; break;
             default:         mode = "None";
         }
-        selCountLabel.setText("Mode: " + mode + " — Selected: " + n + " cells");
+        selCountLabel.setText("Mode: " + mode + " - Selected: " + n + " cells");
         if (selSaveBtn != null) selSaveBtn.setActive(n > 0);
     }
 

@@ -78,4 +78,8 @@ public final class BlueprintPlacement {
         }
         return out;
     }
+
+    public static boolean isFlipped() {
+        return flip;
+    }
 }

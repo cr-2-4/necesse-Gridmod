@@ -355,7 +355,7 @@ public final class PaintQuickPaletteOverlay {
         private boolean internal;
 
         GridPanel() {
-            super("Grid", "Grid visibility", 260);
+            super("Grid", "Grid visibility", 420);
         }
 
         @Override
@@ -367,7 +367,7 @@ public final class PaintQuickPaletteOverlay {
             y += 28;
             gridAlpha = content.addComponent(new FormSlider("Grid alpha", 12, y, Math.round(GridConfig.lineAlpha * 100), 0, 100, sliderW));
             gridAlpha.onChanged(e -> updateAlpha("grid"));
-            y += FormInputSize.SIZE_24.height + 8;
+            y += FormInputSize.SIZE_24.height + 12;
             chunkToggle = content.addComponent(new FormCheckBox("Chunk lines", 12, y, GridConfig.showChunkLines));
             chunkToggle.onClicked(e -> toggleChunks(chunkToggle.checked));
             y += 28;
@@ -375,10 +375,10 @@ public final class PaintQuickPaletteOverlay {
             chunkSpan.drawValue = true;
             chunkSpan.drawValueInPercent = false;
             chunkSpan.onChanged(e -> updateChunkSpan());
-            y += FormInputSize.SIZE_24.height + 8;
+            y += FormInputSize.SIZE_24.height + 12;
             chunkAlpha = content.addComponent(new FormSlider("Chunk alpha", 12, y, Math.round(GridConfig.chunkAlpha * 100), 0, 100, sliderW));
             chunkAlpha.onChanged(e -> updateAlpha("chunk"));
-            y += FormInputSize.SIZE_24.height + 8;
+            y += FormInputSize.SIZE_24.height + 12;
             subChunkToggle = content.addComponent(new FormCheckBox("Sub-chunk lines", 12, y, GridConfig.showSubChunkLines));
             subChunkToggle.onClicked(e -> toggleSubChunks(subChunkToggle.checked));
             y += 28;
@@ -386,7 +386,7 @@ public final class PaintQuickPaletteOverlay {
             subChunkSpan.drawValue = true;
             subChunkSpan.drawValueInPercent = false;
             subChunkSpan.onChanged(e -> updateSubChunkSpan());
-            y += FormInputSize.SIZE_24.height + 8;
+            y += FormInputSize.SIZE_24.height + 12;
             subAlpha = content.addComponent(new FormSlider("Sub-chunk alpha", 12, y, Math.round(GridConfig.subChunkAlpha * 100), 0, 100, sliderW));
             subAlpha.onChanged(e -> updateAlpha("sub"));
         }
@@ -487,8 +487,8 @@ public final class PaintQuickPaletteOverlay {
         protected void refreshContent() {
             if (boundsToggle != null) boundsToggle.checked = GridConfig.settlementEnabled;
             String status = GridConfig.settlementEnabled ? "ON" : "OFF";
-            info.setText("Status " + status + " • Tier " + GridConfig.settlementTier
-                    + " • " + GridConfig.currentTierSideTiles() + " tiles");
+            info.setText("Status " + status + " | Tier " + GridConfig.settlementTier
+                    + " | " + GridConfig.currentTierSideTiles() + " tiles");
         }
     }
 
@@ -499,6 +499,7 @@ public final class PaintQuickPaletteOverlay {
         private String currentBlueprint;
         private long lastSaveClick;
         private List<ModeButton> modeButtons;
+        private FormTextButton flipBtn;
 
         BlueprintPanel() {
             super("Blueprints", "Blueprint tools", 360);
@@ -527,6 +528,15 @@ public final class PaintQuickPaletteOverlay {
             content.addComponent(new FormLabel("Selection mode", new FontOptions(14), FormLabel.ALIGN_LEFT, 12, y));
             y += 22;
             y = buildModeButtons(content, y);
+
+            flipBtn = content.addComponent(new FormTextButton("Flip", 12, y, 100, FormInputSize.SIZE_24, ButtonColor.BASE));
+            flipBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
+                if (BlueprintPlacement.active) {
+                    BlueprintPlacement.toggleFlip();
+                    updateModeButtons();
+                }
+            });
+            y += FormInputSize.SIZE_24.height + 8;
 
             statusLabel = content.addComponent(new FormLabel("", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
             y += 18;
@@ -622,6 +632,10 @@ public final class PaintQuickPaletteOverlay {
             for (ModeButton entry : modeButtons) {
                 String text = entry.mode == mode ? ("> " + modeLabel(entry.mode)) : modeLabel(entry.mode);
                 entry.button.setText(text);
+            }
+            if (flipBtn != null) {
+                flipBtn.setText(BlueprintPlacement.isFlipped() ? "Flip (X)" : "Flip");
+                flipBtn.setActive(BlueprintPlacement.active);
             }
             selectionLabel.setText("Mode: " + modeLabel(mode));
         }
