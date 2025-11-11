@@ -37,8 +37,6 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         final float eR = GridConfig.eraseR, eG = GridConfig.eraseG, eB = GridConfig.eraseB;
         final float sA = GridConfig.selectionAlpha;
         final float sR = GridConfig.selectionR, sG = GridConfig.selectionG, sB = GridConfig.selectionB;
-        final float gA = GridConfig.bpGhostAlpha;
-        final float gR = GridConfig.bpGhostR, gG = GridConfig.bpGhostG, gB = GridConfig.bpGhostB;
 
         int camX = camera.getX();
         int camY = camera.getY();
@@ -50,17 +48,19 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         int endTileY   = (camY + viewH) / tileSize + 1;
 
         // committed paint tiles
-        for (long[] p : PaintState.iterateSnapshot()) {
-            int tx = (int)p[0];
-            int ty = (int)p[1];
+        for (PaintState.PaintEntry p : PaintState.iterateSnapshot()) {
+            int tx = p.x;
+            int ty = p.y;
             if (tx < startTileX || tx > endTileX || ty < startTileY || ty > endTileY) continue;
 
             int px = tx * tileSize - camX;
             int py = ty * tileSize - camY;
+            PaintCategory cat = PaintCategory.byId(p.categoryId);
+            GridConfig.PaintColor color = GridConfig.getPaintColor(cat);
             GameResources.empty.initDraw()
                 .size(tileSize, tileSize)
                 .pos(px, py, false)
-                .color(pR, pG, pB, pA)
+                .color(color.r, color.g, color.b, color.a)
                 .draw();
         }
 
@@ -109,16 +109,19 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         if (BlueprintPlacement.active) {
             int[] anchor = MouseTileUtil.getMouseTile(tileSize);
             if (anchor != null) {
-                List<int[]> ghost = BlueprintPlacement.transformedAt(anchor[0], anchor[1]);
-                for (int[] t : ghost) {
-                    int tx = t[0], ty = t[1];
+                List<BlueprintPlacement.BlueprintTile> ghost = BlueprintPlacement.transformedAt(anchor[0], anchor[1]);
+                for (BlueprintPlacement.BlueprintTile t : ghost) {
+                    int tx = t.dx, ty = t.dy;
                     if (tx < startTileX || tx > endTileX || ty < startTileY || ty > endTileY) continue;
                     int px = tx * tileSize - camX;
                     int py = ty * tileSize - camY;
+                    PaintCategory cat = PaintCategory.byId(t.categoryId);
+                    GridConfig.PaintColor color = GridConfig.getPaintColor(cat);
+                    float ga = Math.min(1f, color.a + 0.25f);
                     GameResources.empty.initDraw()
                         .size(tileSize, tileSize)
                         .pos(px, py, false)
-                        .color(gR, gG, gB, gA)
+                        .color(color.r, color.g, color.b, ga)
                         .draw();
                 }
             }
@@ -131,10 +134,13 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                 if (tx < startTileX || tx > endTileX || ty < startTileY || ty > endTileY) continue;
                 int px = tx * tileSize - camX;
                 int py = ty * tileSize - camY;
+                String catId = PaintState.getCategory(tx, ty);
+                PaintCategory colorCat = PaintCategory.byId(catId);
+                GridConfig.PaintColor color = GridConfig.getPaintColor(colorCat);
                 GameResources.empty.initDraw()
                     .size(tileSize, tileSize)
                     .pos(px, py, false)
-                    .color(sR, sG, sB, sA)
+                    .color(color.r, color.g, color.b, color.a)
                     .draw();
             }
         }

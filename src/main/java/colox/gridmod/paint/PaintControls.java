@@ -62,7 +62,7 @@ public final class PaintControls {
             PaintBlueprints.saveBlueprint(bpName);
         }
         if (GridKeybinds.PAINT_BP_LOAD != null && GridKeybinds.PAINT_BP_LOAD.isPressed()) {
-            List<int[]> rel = PaintBlueprints.loadRelative(bpName);
+            List<BlueprintPlacement.BlueprintTile> rel = PaintBlueprints.loadRelative(bpName);
             if (!rel.isEmpty()) {
                 BlueprintPlacement.begin(rel);
                 if (input.isKeyDown(-100)) suppressPaintUntilLmbUp = true;
@@ -94,8 +94,8 @@ public final class PaintControls {
                 int tileSize = GridConfig.tileSize;
                 int[] tile = MouseTileUtil.getMouseTile(tileSize);
                 if (tile != null) {
-                    List<int[]> abs = BlueprintPlacement.transformedAt(tile[0], tile[1]);
-                    for (int[] p : abs) PaintState.add(p[0], p[1]);
+                    List<BlueprintPlacement.BlueprintTile> abs = BlueprintPlacement.transformedAt(tile[0], tile[1]);
+                    for (BlueprintPlacement.BlueprintTile p : abs) PaintState.add(p.dx, p.dy, p.categoryId);
                     PaintState.markDirty();
                     PaintState.saveIfDirty();
                     suppressPaintUntilLmbUp = true;
@@ -130,7 +130,8 @@ public final class PaintControls {
 
         if (anyHeld && tile != null) {
             boolean doErase = rightHeld || eraseModHeld;
-            Painter.applyAt(tile[0], tile[1], doErase);
+            String catId = GridConfig.getActivePaintCategory().id();
+            Painter.applyAt(tile[0], tile[1], doErase, catId);
         }
 
         PaintState.saveIfDirty();

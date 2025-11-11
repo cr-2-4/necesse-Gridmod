@@ -298,7 +298,7 @@ public class PaintTab {
         bpLoadBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
             String name = currentBP();
             if (name.isBlank()) return;
-            List<int[]> rel = PaintBlueprints.loadRelative(name);
+            List<BlueprintPlacement.BlueprintTile> rel = PaintBlueprints.loadRelative(name);
             if (!rel.isEmpty()) {
                 BlueprintPlacement.begin(rel);
                 setBpStatus("Loaded \"" + name + "\" (" + rel.size() + " cells)");
