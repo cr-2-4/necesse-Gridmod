@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Comparator;
 
 import colox.gridmod.util.ConfigPaths;
+import colox.gridmod.paint.PaintLayerFilter;
 import necesse.engine.save.LoadData;
 import necesse.engine.save.SaveData;
 
@@ -71,6 +72,21 @@ public final class PaintState {
             changed = painted.remove(k) != null;
         } else {
             changed = cell.clear(layer);
+            if (cell.isEmpty()) painted.remove(k);
+        }
+        if (changed) dirty = true;
+    }
+
+    public static void remove(int tx, int ty, PaintLayerFilter filter) {
+        PaintLayerFilter target = (filter == null) ? PaintLayerFilter.ALL : filter;
+        long k = key(tx, ty);
+        PaintCell cell = painted.get(k);
+        if (cell == null) return;
+        boolean changed;
+        if (target == PaintLayerFilter.ALL) {
+            changed = painted.remove(k) != null;
+        } else {
+            changed = cell.clear(target);
             if (cell.isEmpty()) painted.remove(k);
         }
         if (changed) dirty = true;
@@ -217,6 +233,19 @@ public final class PaintState {
             if (layers[idx] == null) return false;
             layers[idx] = null;
             return true;
+        }
+
+        boolean clear(PaintLayerFilter filter) {
+            boolean changed = false;
+            for (int i = 0; i < LAYERS.length; i++) {
+                PaintLayer layer = LAYERS[i];
+                if (!filter.matches(layer)) continue;
+                if (layers[i] != null) {
+                    layers[i] = null;
+                    changed = true;
+                }
+            }
+            return changed;
         }
 
         boolean isEmpty() {

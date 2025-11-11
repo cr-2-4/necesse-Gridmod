@@ -155,7 +155,7 @@ public final class PaintControls {
         if (anyHeld && tile != null) {
             boolean doErase = rightHeld || eraseModHeld;
             String catId = GridConfig.getActivePaintCategory().id();
-            Painter.applyAt(tile[0], tile[1], doErase, catId);
+            Painter.applyAt(tile[0], tile[1], doErase, catId, GridConfig.getPaintLayerFilter());
         }
 
         PaintState.saveIfDirty();

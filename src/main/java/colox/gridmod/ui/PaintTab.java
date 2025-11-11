@@ -33,6 +33,7 @@ import colox.gridmod.input.GridKeybinds;
 import colox.gridmod.paint.BlueprintPlacement;
 import colox.gridmod.paint.PaintBlueprints;
 import colox.gridmod.paint.PaintCategory;
+import colox.gridmod.paint.PaintLayerFilter;
 import colox.gridmod.paint.PaintState;
 import colox.gridmod.paint.SelectionState;
 
@@ -84,6 +85,7 @@ public class PaintTab {
     private final FormContentBox box;
     private final Runnable openPaintColors;
     private FormDropdownSelectionButton<String> paintCategorySelector;
+    private FormDropdownSelectionButton<String> layerFilterDropdown;
 
     // Paint basics
     private FormCheckBox  paintEnableCheck;
@@ -217,6 +219,23 @@ public class PaintTab {
         paintClearBtn = add(new FormTextButton("Clear paint", px, pY, 160, FormInputSize.SIZE_24, ButtonColor.BASE), px, pY);
         paintClearBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> PaintState.clear());
         pY += FormInputSize.SIZE_24.height + 8;
+
+        add(new FormLabel("Erase / selection target", new FontOptions(12), FormLabel.ALIGN_LEFT, px, pY), px, pY);
+        pY += LINE - 10;
+        int filterDdWidth = Math.max(180, Math.min(240, usableRow - 60));
+        layerFilterDropdown = add(new FormDropdownSelectionButton<>(px, pY - 2, FormInputSize.SIZE_24, ButtonColor.BASE, filterDdWidth), px, pY - 2);
+        for (PaintLayerFilter filter : PaintLayerFilter.values()) {
+            layerFilterDropdown.options.add(filter.id(), new StaticMessage(filter.label()));
+        }
+        PaintLayerFilter currentFilter = GridConfig.getPaintLayerFilter();
+        layerFilterDropdown.setSelected(currentFilter.id(), new StaticMessage(currentFilter.label()));
+        layerFilterDropdown.onSelected(e -> {
+            PaintLayerFilter selectedFilter = PaintLayerFilter.byId(e.value);
+            GridConfig.setPaintLayerFilter(selectedFilter);
+            SelectionState.refreshSelection();
+            GridConfig.saveIfDirty();
+        });
+        pY += FormInputSize.SIZE_24.height + 10;
 
         finishCard(cardPaint, pY);
         py = cardPaint.getY() + cardPaint.height + 10;

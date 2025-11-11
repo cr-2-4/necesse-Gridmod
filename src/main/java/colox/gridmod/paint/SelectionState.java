@@ -3,6 +3,8 @@ package colox.gridmod.paint;
 import java.util.*;
 import java.awt.Point;
 
+import colox.gridmod.config.GridConfig;
+
 /**
  * SelectionState
  * - Modes: NONE / RECT / EDGE (stroke) / EDGE_FILL (stroke + polygon fill) / LASSO_FILL (polygon)
@@ -163,6 +165,11 @@ public final class SelectionState {
     /** True if a given tile is currently selected. */
     public static boolean isTileSelected(int tx, int ty) { return selected.contains(key(tx, ty)); }
 
+    public static void refreshSelection() {
+        if (!isActive()) return;
+        computeSelection();
+    }
+
     // ==========================================================
     // [SEL] compute selection
     // ==========================================================
@@ -172,10 +179,16 @@ public final class SelectionState {
 
         // Build quick lookup of painted tiles
         HashSet<Long> painted = new HashSet<>();
+        PaintLayerFilter filter = GridConfig.getPaintLayerFilter();
         for (PaintState.PaintEntry p : PaintState.iterateSnapshot()) {
+            if (!filter.matches(p.layer)) continue;
             painted.add(key(p.x, p.y));
         }
-        if (painted.isEmpty()) { lastCount = 0; return; }
+        if (painted.isEmpty()) {
+            lastCount = 0;
+            notifyChange();
+            return;
+        }
 
         switch (mode) {
             case RECT: {

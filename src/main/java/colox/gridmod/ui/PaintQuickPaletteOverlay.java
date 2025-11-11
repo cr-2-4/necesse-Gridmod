@@ -14,6 +14,7 @@ import colox.gridmod.paint.PaintBlueprints;
 import colox.gridmod.paint.PaintCategory;
 import colox.gridmod.paint.PaintControls;
 import colox.gridmod.paint.PaintLayer;
+import colox.gridmod.paint.PaintLayerFilter;
 import colox.gridmod.paint.PaintState;
 import colox.gridmod.paint.SelectionState;
 import necesse.engine.GlobalData;
@@ -292,6 +293,7 @@ public final class PaintQuickPaletteOverlay {
         private FormContentBox listBox;
         private FormCheckBox hoverMaster;
         private FormCheckBox paintToggle;
+        private FormDropdownSelectionButton<String> layerFilterDropdown;
         private List<CategoryRow> rows;
 
         PaintPanel() {
@@ -309,6 +311,20 @@ public final class PaintQuickPaletteOverlay {
             hoverMaster.onClicked(e -> GridConfig.setHoverLabelsEnabled(hoverMaster.checked));
             rows = new ArrayList<>();
             y += 18;
+            listBox.addComponent(new FormLabel("Erase/select layer", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
+            y += 18;
+            layerFilterDropdown = listBox.addComponent(new FormDropdownSelectionButton<>(12, y, FormInputSize.SIZE_24, ButtonColor.BASE, PANEL_WIDTH - 40));
+            for (PaintLayerFilter filter : PaintLayerFilter.values()) {
+                layerFilterDropdown.options.add(filter.id(), new StaticMessage(filter.label()));
+            }
+            PaintLayerFilter activeFilter = GridConfig.getPaintLayerFilter();
+            layerFilterDropdown.setSelected(activeFilter.id(), new StaticMessage(activeFilter.label()));
+            layerFilterDropdown.onSelected(e -> {
+                GridConfig.setPaintLayerFilter(PaintLayerFilter.byId(e.value));
+                SelectionState.refreshSelection();
+                GridConfig.saveIfDirty();
+            });
+            y += FormInputSize.SIZE_24.height + 12;
             for (LayerGroup group : PAINT_LAYER_GROUPS) {
                 addTo(listBox, new FormLabel(group.title, new FontOptions(13), FormLabel.ALIGN_LEFT, 12, y));
                 y += 20;
@@ -326,6 +342,10 @@ public final class PaintQuickPaletteOverlay {
         protected void refreshContent() {
             if (paintToggle != null) paintToggle.checked = PaintState.enabled;
             hoverMaster.checked = GridConfig.isHoverLabelsEnabled();
+            if (layerFilterDropdown != null) {
+                PaintLayerFilter filter = GridConfig.getPaintLayerFilter();
+                layerFilterDropdown.setSelected(filter.id(), new StaticMessage(filter.label()));
+            }
             PaintCategory active = GridConfig.getActivePaintCategory();
             for (CategoryRow row : rows) row.sync(active, hoverMaster.checked);
         }
@@ -529,6 +549,8 @@ public final class PaintQuickPaletteOverlay {
         private long lastSaveClick;
         private List<ModeButton> modeButtons;
         private FormTextButton flipBtn;
+        private FormTextButton rotateCwBtn;
+        private FormTextButton rotateCcwBtn;
 
         BlueprintPanel() {
             super("Blueprints", "Blueprint tools", 360);
@@ -558,14 +580,29 @@ public final class PaintQuickPaletteOverlay {
             y += 22;
             y = buildModeButtons(content, y);
 
-            flipBtn = content.addComponent(new FormTextButton("Flip", 12, y, 100, FormInputSize.SIZE_24, ButtonColor.BASE));
+            int controlY = y;
+            flipBtn = content.addComponent(new FormTextButton("Flip", 12, controlY, 90, FormInputSize.SIZE_24, ButtonColor.BASE));
             flipBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
                 if (BlueprintPlacement.active) {
                     BlueprintPlacement.toggleFlip();
                     updateModeButtons();
                 }
             });
-            y += FormInputSize.SIZE_24.height + 8;
+            rotateCwBtn = content.addComponent(new FormTextButton("Rotate CW", 110, controlY, 110, FormInputSize.SIZE_24, ButtonColor.BASE));
+            rotateCwBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
+                if (BlueprintPlacement.active) {
+                    BlueprintPlacement.rotateCW();
+                    updateModeButtons();
+                }
+            });
+            rotateCcwBtn = content.addComponent(new FormTextButton("Rotate CCW", 230, controlY, 110, FormInputSize.SIZE_24, ButtonColor.BASE));
+            rotateCcwBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
+                if (BlueprintPlacement.active) {
+                    BlueprintPlacement.rotateCCW();
+                    updateModeButtons();
+                }
+            });
+            y = controlY + FormInputSize.SIZE_24.height + 8;
 
             statusLabel = content.addComponent(new FormLabel("", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
             y += 18;
@@ -632,6 +669,7 @@ public final class PaintQuickPaletteOverlay {
             }
             BlueprintPlacement.begin(rel);
             statusLabel.setText("Loaded '" + name + "'");
+            updateModeButtons();
         }
 
         private String getCurrentBlueprintName() {
@@ -662,11 +700,17 @@ public final class PaintQuickPaletteOverlay {
                 String text = entry.mode == mode ? ("> " + modeLabel(entry.mode)) : modeLabel(entry.mode);
                 entry.button.setText(text);
             }
+            boolean placementActive = BlueprintPlacement.active;
             if (flipBtn != null) {
                 flipBtn.setText(BlueprintPlacement.isFlipped() ? "Flip (X)" : "Flip");
-                flipBtn.setActive(BlueprintPlacement.active);
+                flipBtn.setActive(placementActive);
             }
-            selectionLabel.setText("Mode: " + modeLabel(mode));
+            if (rotateCwBtn != null) rotateCwBtn.setActive(placementActive);
+            if (rotateCcwBtn != null) rotateCcwBtn.setActive(placementActive);
+            if (selectionLabel != null) {
+                PaintLayerFilter filter = GridConfig.getPaintLayerFilter();
+                selectionLabel.setText("Mode: " + modeLabel(mode) + " | Layer: " + filter.label());
+            }
         }
 
         @Override

@@ -5,7 +5,7 @@ import colox.gridmod.config.GridConfig;
 public final class Painter {
     private Painter() {}
 
-    public static void applyAt(int cx, int cy, boolean erase, String categoryId) {
+    public static void applyAt(int cx, int cy, boolean erase, String categoryId, PaintLayerFilter filter) {
         int s = PaintState.getBrush();               // side length
         int half = (s - 1) / 2;                      // integer floor
         int startX = cx - half;
@@ -14,9 +14,10 @@ public final class Painter {
         if (cat == null || cat.isBlank()) {
             cat = GridConfig.getActivePaintCategory().id();
         }
+        PaintLayerFilter target = (filter == null) ? PaintLayerFilter.ALL : filter;
         for (int y = startY; y < startY + s; y++) {
             for (int x = startX; x < startX + s; x++) {
-                if (erase) PaintState.remove(x, y, cat);
+                if (erase) PaintState.remove(x, y, target);
                 else       PaintState.add(x, y, cat);
             }
         }

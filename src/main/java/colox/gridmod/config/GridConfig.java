@@ -6,6 +6,7 @@ import java.util.HashMap;
 import necesse.engine.save.LoadData;
 import necesse.engine.save.SaveData;
 import colox.gridmod.paint.PaintCategory;
+import colox.gridmod.paint.PaintLayerFilter;
 import colox.gridmod.util.ConfigPaths;
 
 public final class GridConfig {
@@ -42,6 +43,7 @@ public final class GridConfig {
     public static float bpGhostR = 1.00f, bpGhostG = 1.00f, bpGhostB = 1.00f, bpGhostAlpha = 0.50f;
     public static String activePaintCategory = PaintCategory.defaultCategory().id();
     public static boolean hoverLabelsEnabled = true;
+    public static PaintLayerFilter paintLayerFilter = PaintLayerFilter.ALL;
     private static final HashMap<String, PaintColor> paintCategoryColors = new HashMap<>();
     private static final HashMap<String, Boolean> hoverCategoryVisibility = new HashMap<>();
 
@@ -154,6 +156,7 @@ public final class GridConfig {
             bpGhostAlpha = ld.getFloat("bpGhostAlpha", bpGhostAlpha);
 
             activePaintCategory = ld.getSafeString("activePaintCategory", activePaintCategory);
+            paintLayerFilter = PaintLayerFilter.byId(ld.getSafeString("paintLayerFilter", paintLayerFilter.id()));
             for (PaintCategory cat : PaintCategory.values()) {
                 float r = ld.getFloat("paintCategory." + cat.id() + ".r", cat.defaultR());
                 float g = ld.getFloat("paintCategory." + cat.id() + ".g", cat.defaultG());
@@ -240,6 +243,7 @@ public final class GridConfig {
                 sd.addFloat("paintCategory." + cat.id() + ".a", color.a);
             }
             sd.addSafeString("activePaintCategory", activePaintCategory);
+            sd.addSafeString("paintLayerFilter", paintLayerFilter.id());
 
             sd.addSafeString("selectedBlueprint", selectedBlueprint);
             sd.addSafeString("selectedGlobalBlueprint", selectedGlobalBlueprint);
@@ -412,6 +416,18 @@ public final class GridConfig {
         if (category == null) category = PaintCategory.defaultCategory();
         hoverCategoryVisibility.put(category.id(), allowed);
         markDirty();
+    }
+
+    public static PaintLayerFilter getPaintLayerFilter() {
+        return paintLayerFilter;
+    }
+
+    public static void setPaintLayerFilter(PaintLayerFilter filter) {
+        if (filter == null) filter = PaintLayerFilter.ALL;
+        if (paintLayerFilter != filter) {
+            paintLayerFilter = filter;
+            markDirty();
+        }
     }
 
     public static void resetHoverCategoryVisibility() {
