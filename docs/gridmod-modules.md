@@ -112,6 +112,10 @@ This document inventories the Java sources under `src/main/java/colox/gridmod`, 
 - **Declares:** `colox.gridmod.ui.GridUI`.
 - **Key dependencies:** Constructs `GridUIForm`; reflects into `necesse.engine.GlobalData`, `WindowManager`, and `FormManager` types to add, center, and manage forms; used by keybinds and paint controls for gating.
 
+### PaintQuickPaletteOverlay.java
+- **Role:** HUD-side “quick control” stack composed of `SidePanelForm` subclasses (Paints, Blueprints, Grid, Settlement). Each panel collapses to a button when inactive and expands into a mini form when toggled; panels appear only when their feature is enabled (e.g., paint mode, grid overlay) and collapse automatically when that feature toggles off so no blank boxes remain onscreen.
+- **Key details:** Paint/blueprint/settlement panels expose the same controls found in the settings UI (paint category toggles, blueprint save/load with double-click safeguard, selection mode buttons, settlement placement/tier actions). The grid panel mirrors `GridTab` alpha sliders/toggles. `PanelsHost` attaches/detaches forms per `FormManager`, with reflection fallbacks (`addComponent`, `setTimeout`, component-list injection). `isMouseOverUi()` and `consumeToggleClick()` integrate with `PaintControls` so mouse clicks over the HUD controls never reach the world.
+
 ## util
 
 ### ConfigPaths.java

@@ -50,3 +50,5 @@ replay_pid*
 
 # Logs
 /latest-crash.log
+
+steam_appid.txt

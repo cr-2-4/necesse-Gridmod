@@ -4,9 +4,14 @@ import colox.gridmod.config.GridConfig;
 import colox.gridmod.input.GridKeybinds;
 import colox.gridmod.ui.GridUI; // UI-safe gate
 import colox.gridmod.ui.PaintQuickPaletteOverlay;
+import necesse.engine.GlobalData;
 import necesse.engine.input.Input;
+import necesse.engine.input.InputPosition;
+import necesse.engine.state.State;
+import necesse.engine.window.GameWindow;
 import necesse.engine.window.WindowManager;
 import necesse.gfx.camera.GameCamera;
+import necesse.gfx.forms.FormManager;
 import necesse.level.maps.Level;
 
 import java.lang.reflect.Method;
@@ -105,6 +110,21 @@ public final class PaintControls {
                             + " tiles=" + abs.size() + " (multi-stamp active; RMB to cancel)");
                 }
             }
+            return;
+        }
+
+        if (PaintQuickPaletteOverlay.consumeToggleClick()) {
+            suppressPaintUntilLmbUp = true;
+            return;
+        }
+
+        if (PaintQuickPaletteOverlay.isMouseOverUi() || isMouseOverFormManager()) {
+            suppressPaintUntilLmbUp = true;
+            return;
+        }
+
+        if (PaintQuickPaletteOverlay.isPaletteExpanded()) {
+            suppressPaintUntilLmbUp = true;
             return;
         }
 
@@ -276,6 +296,21 @@ public final class PaintControls {
         try { if (input.isKeyDown(-99)) return true; } catch (Throwable ignored) {}
         try { if (input.isPressed(-99)) return true; } catch (Throwable ignored) {}
         return false;
+    }
+
+    private static FormManager getCurrentFormManager() {
+        State state = GlobalData.getCurrentState();
+        if (state == null) return null;
+        return state.getFormManager();
+    }
+
+    private static boolean isMouseOverFormManager() {
+        GameWindow window = WindowManager.getWindow();
+        if (window == null) return false;
+        InputPosition pos = window.mousePos();
+        if (pos == null) return false;
+        FormManager manager = getCurrentFormManager();
+        return manager != null && manager.isMouseOver(pos);
     }
 
     // --- Pause detection via reflection (safe fallback = false) ---
