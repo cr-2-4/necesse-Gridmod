@@ -16,7 +16,7 @@ public final class Painter {
         }
         for (int y = startY; y < startY + s; y++) {
             for (int x = startX; x < startX + s; x++) {
-                if (erase) PaintState.remove(x, y);
+                if (erase) PaintState.remove(x, y, cat);
                 else       PaintState.add(x, y, cat);
             }
         }

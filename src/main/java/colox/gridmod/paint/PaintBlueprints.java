@@ -204,11 +204,16 @@ public final class PaintBlueprints {
             if (y < minY) minY = y;
         }
         StringBuilder sb = new StringBuilder(absPoints.size() * 12);
-        for (long[] p : absPoints) {
-            int x = (int)p[0] - minX;
-            int y = (int)p[1] - minY;
-            String cat = PaintState.getCategory((int)p[0], (int)p[1]);
-            sb.append(x).append(',').append(y).append(',').append(cat).append(';');
+        java.util.HashSet<Long> selected = new java.util.HashSet<>(absPoints.size());
+        for (long[] p : absPoints) selected.add(key((int)p[0], (int)p[1]));
+        int written = 0;
+        for (PaintState.PaintEntry entry : PaintState.iterateSnapshot()) {
+            long k = key(entry.x, entry.y);
+            if (!selected.contains(k)) continue;
+            int x = entry.x - minX;
+            int y = entry.y - minY;
+            sb.append(x).append(',').append(y).append(',').append(entry.categoryId).append(';');
+            written++;
         }
         try {
             SaveData sd = new SaveData("paint_blueprint");
@@ -216,8 +221,8 @@ public final class PaintBlueprints {
             sd.addInt("normX", minX);
             sd.addInt("normY", minY);
             sd.saveScript(file);
-            System.out.println("[GridMod] Saved selection '" + name + "' tiles=" + absPoints.size());
-            return absPoints.size();
+            System.out.println("[GridMod] Saved selection '" + name + "' layers=" + written);
+            return written;
         } catch (Throwable t) {
             t.printStackTrace();
             return 0;
@@ -414,5 +419,9 @@ public final class PaintBlueprints {
 
     static String safeName(String name) {
         return name.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+    }
+
+    private static long key(int x, int y) {
+        return ((long)x << 32) | (y & 0xffffffffL);
     }
 }

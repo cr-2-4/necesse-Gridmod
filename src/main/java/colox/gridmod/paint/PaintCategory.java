@@ -6,38 +6,43 @@ import java.util.Locale;
  * Defines the selectable paint categories and their default colors.
  */
 public enum PaintCategory {
-    FLOORS("floors", "Floors", 0.82f, 0.67f, 0.45f, 0.50f),
-    TERRAIN("terrain", "Terrain", 0.40f, 0.60f, 0.25f, 0.50f),
-    LIQUIDS("liquids", "Liquids", 0.20f, 0.45f, 0.90f, 0.50f),
-    OTHER_TILES("other_tiles", "Other Tiles (Farmland/Landfill)", 0.90f, 0.80f, 0.55f, 0.50f),
+    FLOORS("floors", "Floors", 0.82f, 0.67f, 0.45f, 0.50f, PaintLayer.TERRAIN, PaintStyle.FULL_TILE),
+    TERRAIN("terrain", "Terrain", 0.40f, 0.60f, 0.25f, 0.50f, PaintLayer.TERRAIN, PaintStyle.FULL_TILE),
+    LIQUIDS("liquids", "Liquids", 0.20f, 0.45f, 0.90f, 0.50f, PaintLayer.TERRAIN, PaintStyle.FULL_TILE),
+    OTHER_TILES("other_tiles", "Other Tiles (Farmland/Landfill)", 0.90f, 0.80f, 0.55f, 0.50f, PaintLayer.TERRAIN, PaintStyle.OUTLINE),
 
-    OBJECTS("objects", "Objects", 0.95f, 0.35f, 0.35f, 0.50f),
-    SEEDS("seeds", "Seeds / Crops", 0.35f, 0.80f, 0.30f, 0.50f),
-    CRAFTING("crafting", "Crafting Stations", 0.95f, 0.65f, 0.25f, 0.50f),
-    LIGHTING("lighting", "Lighting", 1.00f, 0.90f, 0.55f, 0.50f),
-    FURNITURE("furniture", "Furniture", 0.75f, 0.55f, 0.35f, 0.50f),
-    DECOR("decor", "Decorations", 0.90f, 0.40f, 0.80f, 0.50f),
-    WALLS("walls", "Walls (Background)", 0.65f, 0.65f, 0.65f, 0.50f),
-    DOORS("doors", "Doors", 0.70f, 0.45f, 0.25f, 0.50f),
-    FENCES("fences", "Fences", 0.75f, 0.75f, 0.35f, 0.50f),
-    FENCE_GATES("fence_gates", "Fence Gates", 0.90f, 0.75f, 0.40f, 0.50f),
-    TRAPS("traps", "Traps", 0.95f, 0.20f, 0.20f, 0.50f),
-    LANDSCAPING("landscaping", "Landscaping Objects", 0.30f, 0.60f, 0.30f, 0.50f),
-    TABLE_DECOR("table_decor", "Table Decorations", 0.95f, 0.75f, 0.90f, 0.50f),
-    MASONRY("masonry", "Masonry / Structural", 0.80f, 0.80f, 0.85f, 0.50f),
-    OTHER_OBJECTS("other_objects", "Other Objects", 0.50f, 0.50f, 0.95f, 0.50f);
+    OBJECTS("objects", "Objects", 0.95f, 0.35f, 0.35f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT),
+    SEEDS("seeds", "Seeds / Crops", 0.35f, 0.80f, 0.30f, 0.50f, PaintLayer.OBJECT, PaintStyle.CENTER_DOT),
+    CRAFTING("crafting", "Crafting Stations", 0.95f, 0.65f, 0.25f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT),
+    LIGHTING("lighting", "Lighting", 1.00f, 0.90f, 0.55f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT),
+    FURNITURE("furniture", "Furniture", 0.75f, 0.55f, 0.35f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT),
+    DECOR("decor", "Decorations", 0.90f, 0.40f, 0.80f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT),
+    WALLS("walls", "Walls (Background)", 0.65f, 0.65f, 0.65f, 0.50f, PaintLayer.WALL, PaintStyle.TOP_STRIP),
+    DOORS("doors", "Doors", 0.70f, 0.45f, 0.25f, 0.50f, PaintLayer.WALL, PaintStyle.TOP_STRIP),
+    FENCES("fences", "Fences", 0.75f, 0.75f, 0.35f, 0.50f, PaintLayer.WALL, PaintStyle.OUTLINE),
+    FENCE_GATES("fence_gates", "Fence Gates", 0.90f, 0.75f, 0.40f, 0.50f, PaintLayer.WALL, PaintStyle.OUTLINE),
+    TRAPS("traps", "Traps", 0.95f, 0.20f, 0.20f, 0.50f, PaintLayer.OBJECT, PaintStyle.CENTER_DOT),
+    LANDSCAPING("landscaping", "Landscaping Objects", 0.30f, 0.60f, 0.30f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT),
+    TABLE_DECOR("table_decor", "Table Decorations", 0.95f, 0.75f, 0.90f, 0.50f, PaintLayer.TABLETOP, PaintStyle.QUARTER_CORNER),
+    MASONRY("masonry", "Masonry / Structural", 0.80f, 0.80f, 0.85f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT),
+    OTHER_OBJECTS("other_objects", "Other Objects", 0.50f, 0.50f, 0.95f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT);
 
     private final String id;
     private final String label;
     private final float defR, defG, defB, defA;
+    private final PaintLayer layer;
+    private final PaintStyle style;
 
-    PaintCategory(String id, String label, float defR, float defG, float defB, float defA) {
+    PaintCategory(String id, String label, float defR, float defG, float defB, float defA,
+                  PaintLayer layer, PaintStyle style) {
         this.id = id;
         this.label = label;
         this.defR = clamp(defR);
         this.defG = clamp(defG);
         this.defB = clamp(defB);
         this.defA = clamp(defA);
+        this.layer = layer;
+        this.style = style;
     }
 
     private static float clamp(float v) {
@@ -58,6 +63,8 @@ public enum PaintCategory {
     public float defaultG() { return defG; }
     public float defaultB() { return defB; }
     public float defaultA() { return defA; }
+    public PaintLayer layer() { return layer; }
+    public PaintStyle style() { return style; }
 
     public static PaintCategory defaultCategory() {
         return FLOORS;

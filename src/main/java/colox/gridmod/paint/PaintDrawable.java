@@ -83,11 +83,7 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
             int py = ty * tileSize - camY;
             PaintCategory cat = PaintCategory.byId(p.categoryId);
             GridConfig.PaintColor color = GridConfig.getPaintColor(cat);
-            GameResources.empty.initDraw()
-                .size(tileSize, tileSize)
-                .pos(px, py, false)
-                .color(color.r, color.g, color.b, color.a)
-                .draw();
+            drawPaintMark(px, py, tileSize, cat, color.r, color.g, color.b, color.a);
         }
 
         if (hoverCategory != null) {
@@ -149,11 +145,7 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                     PaintCategory cat = PaintCategory.byId(t.categoryId);
                     GridConfig.PaintColor color = GridConfig.getPaintColor(cat);
                     float ga = Math.min(1f, color.a + 0.25f);
-                    GameResources.empty.initDraw()
-                        .size(tileSize, tileSize)
-                        .pos(px, py, false)
-                        .color(color.r, color.g, color.b, ga)
-                        .draw();
+                    drawPaintMark(px, py, tileSize, cat, color.r, color.g, color.b, ga);
                 }
             }
         }
@@ -253,11 +245,7 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
             if (tx < startTileX || tx > endTileX || ty < startTileY || ty > endTileY) continue;
             int px = tx * tileSize - camX;
             int py = ty * tileSize - camY;
-            GameResources.empty.initDraw()
-                    .size(tileSize, tileSize)
-                    .pos(px, py, false)
-                    .color(hiR, hiG, hiB, hiA)
-                    .draw();
+            drawPaintMark(px, py, tileSize, category, hiR, hiG, hiB, hiA);
             drawCellEdges(px, py, tileSize, hiR, hiG, hiB, edgeA);
         }
     }
@@ -319,5 +307,55 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
             int h = Math.max(2, y1 - y0 + 1);
             GameResources.empty.initDraw().size(w, h).pos(x0 - w / 2, y0, false).color(r, g, b, a).draw();
         }
+    }
+
+    private void drawPaintMark(int px, int py, int tileSize,
+                               PaintCategory category,
+                               float r, float g, float b, float a) {
+        if (a <= 0f) return;
+        switch (category.style()) {
+            case FULL_TILE:
+                drawRect(px, py, tileSize, tileSize, r, g, b, a);
+                break;
+            case INSET_RECT: {
+                int margin = Math.max(2, tileSize / 6);
+                int size = Math.max(2, tileSize - margin * 2);
+                drawRect(px + margin, py + margin, size, size, r, g, b, a);
+                break;
+            }
+            case OUTLINE:
+                drawCellEdges(px, py, tileSize, r, g, b, a);
+                break;
+            case TOP_STRIP: {
+                int height = Math.max(3, tileSize / 4);
+                drawRect(px, py, tileSize, height, r, g, b, a);
+                break;
+            }
+            case QUARTER_CORNER: {
+                int size = Math.max(4, tileSize / 2);
+                int pad = Math.max(2, tileSize / 10);
+                int drawX = px + tileSize - size - pad;
+                int drawY = py + tileSize - size - pad;
+                drawRect(drawX, drawY, size, size, r, g, b, a);
+                break;
+            }
+            case CENTER_DOT: {
+                int size = Math.max(4, tileSize / 3);
+                int drawX = px + (tileSize - size) / 2;
+                int drawY = py + (tileSize - size) / 2;
+                drawRect(drawX, drawY, size, size, r, g, b, a);
+                break;
+            }
+            default:
+                drawRect(px, py, tileSize, tileSize, r, g, b, a);
+        }
+    }
+
+    private void drawRect(int x, int y, int w, int h, float r, float g, float b, float a) {
+        GameResources.empty.initDraw()
+                .size(w, h)
+                .pos(x, y, false)
+                .color(r, g, b, a)
+                .draw();
     }
 }
