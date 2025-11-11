@@ -13,6 +13,7 @@ import colox.gridmod.paint.BlueprintPlacement;
 import colox.gridmod.paint.PaintBlueprints;
 import colox.gridmod.paint.PaintCategory;
 import colox.gridmod.paint.PaintControls;
+import colox.gridmod.paint.PaintLayer;
 import colox.gridmod.paint.PaintState;
 import colox.gridmod.paint.SelectionState;
 import necesse.engine.GlobalData;
@@ -58,6 +59,28 @@ public final class PaintQuickPaletteOverlay {
             PanelType.BLUEPRINTS,
             PanelType.GRID,
             PanelType.SETTLEMENT
+    };
+
+    private static final class LayerGroup {
+        final String title;
+        final PaintLayer[] layers;
+
+        LayerGroup(String title, PaintLayer... layers) {
+            this.title = title;
+            this.layers = layers;
+        }
+
+        boolean contains(PaintLayer layer) {
+            for (PaintLayer l : layers) if (l == layer) return true;
+            return false;
+        }
+    }
+
+    private static final LayerGroup[] PAINT_LAYER_GROUPS = new LayerGroup[]{
+            new LayerGroup("Bottom layer paints", PaintLayer.TERRAIN),
+            new LayerGroup("Middle layer paints", PaintLayer.OBJECT),
+            new LayerGroup("Wall layer paints", PaintLayer.WALL),
+            new LayerGroup("Top layer paints", PaintLayer.TABLETOP)
     };
 
     private static final IdentityHashMap<Object, PanelsHost> HOSTS = new IdentityHashMap<>();
@@ -285,10 +308,16 @@ public final class PaintQuickPaletteOverlay {
             hoverMaster = addTo(listBox, new FormCheckBox("Show tile type on hover", 12, y, GridConfig.isHoverLabelsEnabled()));
             hoverMaster.onClicked(e -> GridConfig.setHoverLabelsEnabled(hoverMaster.checked));
             rows = new ArrayList<>();
-            y += 30;
-            for (PaintCategory cat : PaintCategory.values()) {
-                rows.add(new CategoryRow(cat, y));
-                y += 26;
+            y += 18;
+            for (LayerGroup group : PAINT_LAYER_GROUPS) {
+                addTo(listBox, new FormLabel(group.title, new FontOptions(13), FormLabel.ALIGN_LEFT, 12, y));
+                y += 20;
+                for (PaintCategory cat : PaintCategory.values()) {
+                    if (!group.contains(cat.layer())) continue;
+                    rows.add(new CategoryRow(cat, y));
+                    y += 26;
+                }
+                y += 10;
             }
             listBox.setContentBox(new Rectangle(0, 0, PANEL_WIDTH, Math.max(y + 12, listBox.getHeight())));
         }

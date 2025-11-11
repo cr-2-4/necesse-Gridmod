@@ -13,6 +13,8 @@ import necesse.gfx.gameFont.FontOptions;
 import necesse.level.maps.Level;
 
 import java.awt.Point;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class PaintDrawable implements necesse.gfx.drawables.Drawable {
@@ -57,21 +59,27 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
 
         List<PaintState.PaintEntry> snapshot = PaintState.iterateSnapshot();
         int[] mouseTile = MouseTileUtil.getMouseTile(tileSize);
-        PaintCategory hoverCategory = null;
+        boolean hoverMasterEnabled = GridConfig.isHoverLabelsEnabled();
+        List<PaintCategory> hoverCategories = Collections.emptyList();
         int hoverPx = 0;
         int hoverPy = 0;
-        boolean hoverMasterEnabled = GridConfig.isHoverLabelsEnabled();
-        if (mouseTile != null) {
-            PaintState.PaintEntry hovered = PaintState.getPaintEntry(mouseTile[0], mouseTile[1]);
-            if (hovered != null) {
-                hoverCategory = PaintCategory.byId(hovered.categoryId);
-                hoverPx = mouseTile[0] * tileSize - camX;
-                hoverPy = mouseTile[1] * tileSize - camY;
+        if (hoverMasterEnabled && mouseTile != null) {
+            List<PaintState.PaintEntry> entries = PaintState.getPaintEntries(mouseTile[0], mouseTile[1]);
+            if (!entries.isEmpty()) {
+                List<PaintCategory> acceptedCats = new ArrayList<>(entries.size());
+                for (PaintState.PaintEntry entry : entries) {
+                    PaintCategory cat = PaintCategory.byId(entry.categoryId);
+                    if (!GridConfig.isHoverCategoryAllowed(cat)) continue;
+                    acceptedCats.add(cat);
+                }
+                if (!acceptedCats.isEmpty()) {
+                    hoverCategories = acceptedCats;
+                    hoverPx = mouseTile[0] * tileSize - camX;
+                    hoverPy = mouseTile[1] * tileSize - camY;
+                }
             }
         }
-        if (hoverCategory != null && (!hoverMasterEnabled || !GridConfig.isHoverCategoryAllowed(hoverCategory))) {
-            hoverCategory = null;
-        }
+        PaintCategory hoverHighlight = hoverCategories.isEmpty() ? null : hoverCategories.get(0);
 
         // committed paint tiles
         for (PaintState.PaintEntry p : snapshot) {
@@ -86,8 +94,8 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
             drawPaintMark(px, py, tileSize, cat, color.r, color.g, color.b, color.a);
         }
 
-        if (hoverCategory != null) {
-            drawHoverCategoryHighlight(snapshot, hoverCategory, camX, camY, tileSize,
+        if (hoverHighlight != null) {
+            drawHoverCategoryHighlight(snapshot, hoverHighlight, camX, camY, tileSize,
                     startTileX, endTileX, startTileY, endTileY);
         }
 
@@ -220,8 +228,8 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
             }
         }
 
-        if (hoverCategory != null) {
-            drawHoverTooltip(hoverCategory, hoverPx, hoverPy, tileSize, viewW, viewH);
+        if (!hoverCategories.isEmpty()) {
+            drawHoverTooltip(hoverCategories, hoverPx, hoverPy, tileSize, viewW, viewH);
         }
     }
 
@@ -235,7 +243,7 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         float hiG = Math.min(1f, base.g + 0.15f);
         float hiB = Math.min(1f, base.b + 0.15f);
         float hiA = Math.min(1f, base.a + 0.35f);
-        float edgeA = Math.min(1f, hiA + 0.15f);
+        float edgeA = Math.min(1f, hiA + 0.15f) * category.layer().alphaScale();
         String targetId = category.id();
 
         for (PaintState.PaintEntry entry : snapshot) {
@@ -250,15 +258,22 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         }
     }
 
-    private void drawHoverTooltip(PaintCategory category,
+    private void drawHoverTooltip(List<PaintCategory> categories,
                                   int hoverPx, int hoverPy,
                                   int tileSize, int viewW, int viewH) {
-        if (FontManager.bit == null) return;
-        String label = category.label();
+        if (categories == null || categories.isEmpty() || FontManager.bit == null) return;
         FontOptions fo = HOVER_FONT;
-        int textW = FontManager.bit.getWidthCeil(label, fo);
-        int textH = FontManager.bit.getHeightCeil(label, fo);
+        int lineHeight = FontManager.bit.getHeightCeil("Ag", fo);
+        int indicator = 10;
+        int lineGap = 2;
         int pad = TOOLTIP_PADDING;
+
+        int textW = 0;
+        for (PaintCategory cat : categories) {
+            int width = FontManager.bit.getWidthCeil(cat.label(), fo) + indicator + 6;
+            if (width > textW) textW = width;
+        }
+        int textH = categories.size() * lineHeight + Math.max(0, categories.size() - 1) * lineGap;
 
         int labelX = hoverPx + tileSize / 2 - textW / 2;
         int labelY = hoverPy - textH - 6;
@@ -273,17 +288,23 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         int boxH = textH + pad * 2;
 
         Renderer.initQuadDraw(boxW, boxH)
-                .color(0f, 0f, 0f, 0.7f)
+                .color(0f, 0f, 0f, 0.75f)
                 .draw(boxX, boxY);
 
-        GridConfig.PaintColor color = GridConfig.getPaintColor(category);
-        float borderA = Math.min(1f, color.a + 0.3f);
-        Renderer.initQuadDraw(boxW, 1).color(color.r, color.g, color.b, borderA).draw(boxX, boxY);
-        Renderer.initQuadDraw(boxW, 1).color(color.r, color.g, color.b, borderA).draw(boxX, boxY + boxH - 1);
-        Renderer.initQuadDraw(1, boxH).color(color.r, color.g, color.b, borderA).draw(boxX, boxY);
-        Renderer.initQuadDraw(1, boxH).color(color.r, color.g, color.b, borderA).draw(boxX + boxW - 1, boxY);
+        Renderer.initQuadDraw(boxW, 1).color(1f, 1f, 1f, 0.2f).draw(boxX, boxY);
+        Renderer.initQuadDraw(boxW, 1).color(1f, 1f, 1f, 0.2f).draw(boxX, boxY + boxH - 1);
+        Renderer.initQuadDraw(1, boxH).color(1f, 1f, 1f, 0.2f).draw(boxX, boxY);
+        Renderer.initQuadDraw(1, boxH).color(1f, 1f, 1f, 0.2f).draw(boxX + boxW - 1, boxY);
 
-        FontManager.bit.drawString((float)labelX, (float)labelY, label, fo);
+        int rowY = labelY;
+        for (PaintCategory cat : categories) {
+            GridConfig.PaintColor color = GridConfig.getPaintColor(cat);
+            Renderer.initQuadDraw(indicator, indicator)
+                    .color(color.r, color.g, color.b, Math.min(1f, color.a + 0.2f))
+                    .draw(labelX, rowY + (lineHeight - indicator) / 2);
+            FontManager.bit.drawString((float)(labelX + indicator + 6), (float)rowY, cat.label(), fo);
+            rowY += lineHeight + lineGap;
+        }
     }
 
     private void drawCellEdges(int x, int y, int size, float r, float g, float b, float a) {
@@ -312,23 +333,24 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
     private void drawPaintMark(int px, int py, int tileSize,
                                PaintCategory category,
                                float r, float g, float b, float a) {
-        if (a <= 0f) return;
+        float finalAlpha = clamp01(a * category.layer().alphaScale());
+        if (finalAlpha <= 0f) return;
         switch (category.style()) {
             case FULL_TILE:
-                drawRect(px, py, tileSize, tileSize, r, g, b, a);
+                drawRect(px, py, tileSize, tileSize, r, g, b, finalAlpha);
                 break;
             case INSET_RECT: {
                 int margin = Math.max(2, tileSize / 6);
                 int size = Math.max(2, tileSize - margin * 2);
-                drawRect(px + margin, py + margin, size, size, r, g, b, a);
+                drawRect(px + margin, py + margin, size, size, r, g, b, finalAlpha);
                 break;
             }
             case OUTLINE:
-                drawCellEdges(px, py, tileSize, r, g, b, a);
+                drawCellEdges(px, py, tileSize, r, g, b, finalAlpha);
                 break;
             case TOP_STRIP: {
                 int height = Math.max(3, tileSize / 4);
-                drawRect(px, py, tileSize, height, r, g, b, a);
+                drawRect(px, py, tileSize, height, r, g, b, finalAlpha);
                 break;
             }
             case QUARTER_CORNER: {
@@ -336,18 +358,18 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                 int pad = Math.max(2, tileSize / 10);
                 int drawX = px + tileSize - size - pad;
                 int drawY = py + tileSize - size - pad;
-                drawRect(drawX, drawY, size, size, r, g, b, a);
+                drawRect(drawX, drawY, size, size, r, g, b, finalAlpha);
                 break;
             }
             case CENTER_DOT: {
                 int size = Math.max(4, tileSize / 3);
                 int drawX = px + (tileSize - size) / 2;
                 int drawY = py + (tileSize - size) / 2;
-                drawRect(drawX, drawY, size, size, r, g, b, a);
+                drawRect(drawX, drawY, size, size, r, g, b, finalAlpha);
                 break;
             }
             default:
-                drawRect(px, py, tileSize, tileSize, r, g, b, a);
+                drawRect(px, py, tileSize, tileSize, r, g, b, finalAlpha);
         }
     }
 
@@ -357,5 +379,11 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                 .pos(x, y, false)
                 .color(r, g, b, a)
                 .draw();
+    }
+
+    private static float clamp01(float value) {
+        if (value < 0f) return 0f;
+        if (value > 1f) return 1f;
+        return value;
     }
 }

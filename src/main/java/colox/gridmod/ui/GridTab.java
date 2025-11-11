@@ -2,7 +2,6 @@ package colox.gridmod.ui;
 
 import java.util.function.Consumer;
 
-import necesse.engine.localization.message.StaticMessage;
 import necesse.gfx.forms.components.*;
 import necesse.gfx.forms.position.FormFixedPosition;
 import necesse.gfx.forms.components.FormContentIconButton;

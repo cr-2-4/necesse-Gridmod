@@ -12,6 +12,7 @@ import necesse.gfx.fairType.TypeParsers;
 import necesse.gfx.forms.components.FormButton;
 import necesse.gfx.forms.components.FormCheckBox;
 import necesse.gfx.forms.components.FormContentBox;
+import necesse.gfx.forms.components.FormContentIconButton;
 import necesse.gfx.forms.components.FormCustomDraw;
 import necesse.gfx.forms.components.FormDropdownSelectionButton;
 import necesse.gfx.forms.components.FormFairTypeLabel;
@@ -81,6 +82,7 @@ public class PaintTab {
     }
 
     private final FormContentBox box;
+    private final Runnable openPaintColors;
     private FormDropdownSelectionButton<String> paintCategorySelector;
 
     // Paint basics
@@ -128,8 +130,9 @@ public class PaintTab {
     private long bpStatusClearAtMs = 0L;
     private long gbpStatusClearAtMs = 0L;
 
-    public PaintTab(FormContentBox box) {
+    public PaintTab(FormContentBox box, Runnable openPaintColors) {
         this.box = box;
+        this.openPaintColors = (openPaintColors == null) ? () -> {} : openPaintColors;
         build();
     }
 
@@ -179,6 +182,9 @@ public class PaintTab {
         pY += LINE;
 
         add(new FormLabel("Choose paint", new FontOptions(12), FormLabel.ALIGN_LEFT, px, pY), px, pY);
+        int cogX = px + usableRow - 32;
+        FormContentIconButton paintCog = add(new FormContentIconButton(cogX, pY - 4, FormInputSize.SIZE_24, ButtonColor.BASE, box.getInterfaceStyle().config_button_32), cogX, pY - 4);
+        paintCog.onClicked(e -> this.openPaintColors.run());
         pY += LINE - 10;
         int ddW = Math.max(180, Math.min(240, usableRow - 60));
         paintCategorySelector = add(new FormDropdownSelectionButton<>(px, pY - 2, FormInputSize.SIZE_24, ButtonColor.BASE, ddW), px, pY - 2);

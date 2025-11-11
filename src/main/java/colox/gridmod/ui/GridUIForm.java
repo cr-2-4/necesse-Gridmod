@@ -254,7 +254,7 @@ public class GridUIForm extends Form {
         new GridTab(gridBox, v -> this.drawBaseAlpha = v, () -> switchTab(Tab.GRID_COLORS));
 
         // ======== PAINT tab ========
-        new PaintTab(paintBox);
+        new PaintTab(paintBox, () -> switchTab(Tab.PAINT_CATEGORY_COLORS));
 
         // ======== SETTLEMENT (non-color) ========
         buildSettlementContent();

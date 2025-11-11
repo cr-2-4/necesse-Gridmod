@@ -3,6 +3,7 @@ package colox.gridmod.paint;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -90,6 +91,12 @@ public final class PaintState {
         PaintCell cell = painted.get(key(tx, ty));
         if (cell == null) return null;
         return cell.topEntry(tx, ty);
+    }
+
+    public static List<PaintEntry> getPaintEntries(int tx, int ty) {
+        PaintCell cell = painted.get(key(tx, ty));
+        if (cell == null) return Collections.emptyList();
+        return cell.entriesDescending(tx, ty);
     }
 
     public static List<PaintEntry> iterateSnapshot() {
@@ -242,6 +249,16 @@ public final class PaintState {
                 if (cat == null) continue;
                 out.add(new PaintEntry(x, y, LAYERS[i], cat));
             }
+        }
+
+        List<PaintEntry> entriesDescending(int x, int y) {
+            List<PaintEntry> entries = new ArrayList<>(layers.length);
+            for (int i = layers.length - 1; i >= 0; i--) {
+                String cat = layers[i];
+                if (cat == null) continue;
+                entries.add(new PaintEntry(x, y, LAYERS[i], cat));
+            }
+            return entries;
         }
     }
 }
