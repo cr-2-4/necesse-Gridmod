@@ -75,6 +75,12 @@ public final class PaintState {
         return out;
     }
 
+    public static PaintEntry getPaintEntry(int tx, int ty) {
+        String cat = painted.get(key(tx, ty));
+        if (cat == null) return null;
+        return new PaintEntry(tx, ty, cat);
+    }
+
     public static void load() {
         try {
             Path p = ConfigPaths.paintFile();

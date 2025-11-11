@@ -249,6 +249,7 @@ public final class PaintControls {
 
         if (input.isPressed(-99)) {
             SelectionState.clear();
+            SelectionState.setMode(SelectionState.Mode.NONE);
             return;
         }
 

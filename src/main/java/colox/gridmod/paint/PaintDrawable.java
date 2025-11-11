@@ -7,6 +7,9 @@ import necesse.engine.input.Input;
 import necesse.engine.window.WindowManager;
 import necesse.gfx.GameResources;
 import necesse.gfx.camera.GameCamera;
+import necesse.gfx.Renderer;
+import necesse.gfx.gameFont.FontManager;
+import necesse.gfx.gameFont.FontOptions;
 import necesse.level.maps.Level;
 
 import java.awt.Point;
@@ -16,6 +19,11 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
     @SuppressWarnings("unused")
     private final Level level;
     private final GameCamera camera;
+    private static final FontOptions HOVER_FONT = new FontOptions(18)
+            .outline()
+            .colorf(1f, 1f, 1f, 1f)
+            .shadow(0f, 0f, 0f, 0.85f, 2, 2);
+    private static final int TOOLTIP_PADDING = 5;
 
     public PaintDrawable(Level level, GameCamera camera) {
         this.level = level;
@@ -47,8 +55,22 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         int endTileX   = (camX + viewW) / tileSize + 1;
         int endTileY   = (camY + viewH) / tileSize + 1;
 
+        List<PaintState.PaintEntry> snapshot = PaintState.iterateSnapshot();
+        int[] mouseTile = MouseTileUtil.getMouseTile(tileSize);
+        PaintCategory hoverCategory = null;
+        int hoverPx = 0;
+        int hoverPy = 0;
+        if (mouseTile != null) {
+            PaintState.PaintEntry hovered = PaintState.getPaintEntry(mouseTile[0], mouseTile[1]);
+            if (hovered != null) {
+                hoverCategory = PaintCategory.byId(hovered.categoryId);
+                hoverPx = mouseTile[0] * tileSize - camX;
+                hoverPy = mouseTile[1] * tileSize - camY;
+            }
+        }
+
         // committed paint tiles
-        for (PaintState.PaintEntry p : PaintState.iterateSnapshot()) {
+        for (PaintState.PaintEntry p : snapshot) {
             int tx = p.x;
             int ty = p.y;
             if (tx < startTileX || tx > endTileX || ty < startTileY || ty > endTileY) continue;
@@ -64,9 +86,14 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                 .draw();
         }
 
+        if (hoverCategory != null) {
+            drawHoverCategoryHighlight(snapshot, hoverCategory, camX, camY, tileSize,
+                    startTileX, endTileX, startTileY, endTileY);
+        }
+
         // brush preview (only when painting and not placing/choosing selection)
         if (PaintState.enabled && !BlueprintPlacement.active && !SelectionState.isActive()) {
-            int[] tile = MouseTileUtil.getMouseTile(tileSize);
+            int[] tile = mouseTile;
             if (tile != null) {
                 int s = PaintState.getBrush();
                 int half = (s - 1) / 2;
@@ -107,7 +134,7 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
 
         // blueprint ghost while placing
         if (BlueprintPlacement.active) {
-            int[] anchor = MouseTileUtil.getMouseTile(tileSize);
+            int[] anchor = mouseTile;
             if (anchor != null) {
                 List<BlueprintPlacement.BlueprintTile> ghost = BlueprintPlacement.transformedAt(anchor[0], anchor[1]);
                 for (BlueprintPlacement.BlueprintTile t : ghost) {
@@ -196,6 +223,75 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                 default: break;
             }
         }
+
+        if (hoverCategory != null) {
+            drawHoverTooltip(hoverCategory, hoverPx, hoverPy, tileSize, viewW, viewH);
+        }
+    }
+
+    private void drawHoverCategoryHighlight(List<PaintState.PaintEntry> snapshot,
+                                            PaintCategory category,
+                                            int camX, int camY, int tileSize,
+                                            int startTileX, int endTileX,
+                                            int startTileY, int endTileY) {
+        GridConfig.PaintColor base = GridConfig.getPaintColor(category);
+        float hiR = Math.min(1f, base.r + 0.15f);
+        float hiG = Math.min(1f, base.g + 0.15f);
+        float hiB = Math.min(1f, base.b + 0.15f);
+        float hiA = Math.min(1f, base.a + 0.35f);
+        float edgeA = Math.min(1f, hiA + 0.15f);
+        String targetId = category.id();
+
+        for (PaintState.PaintEntry entry : snapshot) {
+            if (!targetId.equals(entry.categoryId)) continue;
+            int tx = entry.x;
+            int ty = entry.y;
+            if (tx < startTileX || tx > endTileX || ty < startTileY || ty > endTileY) continue;
+            int px = tx * tileSize - camX;
+            int py = ty * tileSize - camY;
+            GameResources.empty.initDraw()
+                    .size(tileSize, tileSize)
+                    .pos(px, py, false)
+                    .color(hiR, hiG, hiB, hiA)
+                    .draw();
+            drawCellEdges(px, py, tileSize, hiR, hiG, hiB, edgeA);
+        }
+    }
+
+    private void drawHoverTooltip(PaintCategory category,
+                                  int hoverPx, int hoverPy,
+                                  int tileSize, int viewW, int viewH) {
+        if (FontManager.bit == null) return;
+        String label = category.label();
+        FontOptions fo = HOVER_FONT;
+        int textW = FontManager.bit.getWidthCeil(label, fo);
+        int textH = FontManager.bit.getHeightCeil(label, fo);
+        int pad = TOOLTIP_PADDING;
+
+        int labelX = hoverPx + tileSize / 2 - textW / 2;
+        int labelY = hoverPy - textH - 6;
+        if (labelX < pad) labelX = pad;
+        if (labelX + textW > viewW - pad) labelX = Math.max(pad, viewW - textW - pad);
+        if (labelY < pad) labelY = hoverPy + tileSize + 6;
+        if (labelY + textH > viewH - pad) labelY = Math.max(pad, viewH - textH - pad);
+
+        int boxX = labelX - pad;
+        int boxY = labelY - pad;
+        int boxW = textW + pad * 2;
+        int boxH = textH + pad * 2;
+
+        Renderer.initQuadDraw(boxW, boxH)
+                .color(0f, 0f, 0f, 0.7f)
+                .draw(boxX, boxY);
+
+        GridConfig.PaintColor color = GridConfig.getPaintColor(category);
+        float borderA = Math.min(1f, color.a + 0.3f);
+        Renderer.initQuadDraw(boxW, 1).color(color.r, color.g, color.b, borderA).draw(boxX, boxY);
+        Renderer.initQuadDraw(boxW, 1).color(color.r, color.g, color.b, borderA).draw(boxX, boxY + boxH - 1);
+        Renderer.initQuadDraw(1, boxH).color(color.r, color.g, color.b, borderA).draw(boxX, boxY);
+        Renderer.initQuadDraw(1, boxH).color(color.r, color.g, color.b, borderA).draw(boxX + boxW - 1, boxY);
+
+        FontManager.bit.drawString((float)labelX, (float)labelY, label, fo);
     }
 
     private void drawCellEdges(int x, int y, int size, float r, float g, float b, float a) {

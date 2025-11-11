@@ -129,6 +129,7 @@ public final class SelectionState {
         lassoPath.clear();
         selected.clear();
         lastCount = 0;
+        notifyChange();
     }
 
     public static boolean isDragging() { return dragging; }
@@ -227,6 +228,17 @@ public final class SelectionState {
         }
 
         lastCount = selected.size();
+        notifyChange();
+    }
+
+    private static Runnable changeListener = () -> {};
+
+    public static void setChangeListener(Runnable listener) {
+        changeListener = (listener == null) ? () -> {} : listener;
+    }
+
+    private static void notifyChange() {
+        try { changeListener.run(); } catch (Throwable ignored) {}
     }
 
     // ==========================================================

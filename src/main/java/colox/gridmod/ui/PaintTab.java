@@ -419,6 +419,9 @@ public class PaintTab {
         selCountLabel = add(new FormLabel("Selected: 0 cells", new FontOptions(14), FormLabel.ALIGN_LEFT, px, pY), px, pY);
         pY += LINE + 6;
 
+        SelectionState.setChangeListener(this::updateSelCountLabel);
+        updateSelCountLabel();
+
         add(new FormLabel("Save Selection As:", new FontOptions(14), FormLabel.ALIGN_LEFT, px, pY + 6), px, pY + 6);
         selSaveNameInput = add(new FormTextInput(px + 160, pY, FormInputSize.SIZE_24, 260, 40), px + 160, pY);
         selSaveNameInput.placeHolder = new StaticMessage("bp_selection");
