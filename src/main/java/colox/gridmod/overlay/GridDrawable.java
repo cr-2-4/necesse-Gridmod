@@ -14,6 +14,7 @@ import necesse.level.maps.Level;
 */
 
 public class GridDrawable implements necesse.gfx.drawables.Drawable {
+    @SuppressWarnings("unused")
     private final Level level;
     private final GameCamera camera;
 

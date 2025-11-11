@@ -6,17 +6,27 @@ import java.util.List;
 public final class BlueprintPlacement {
     private BlueprintPlacement() {}
 
+    public static final class BlueprintTile {
+        public final int dx;
+        public final int dy;
+        public final String categoryId;
+        public BlueprintTile(int dx, int dy, String categoryId) {
+            this.dx = dx;
+            this.dy = dy;
+            this.categoryId = categoryId;
+        }
+    }
+
     // Whether we are currently placing a blueprint
     public static boolean active = false;
 
-    // Tiles relative to pivot (0,0). Each entry is int[2] {dx, dy}
-    private static final List<int[]> rel = new ArrayList<>();
+    private static final List<BlueprintTile> rel = new ArrayList<>();
 
     // Transform state
     private static int rot = 0;           // 0,90,180,270 (clockwise)
     private static boolean flip = false;  // horizontal flip before rotate
 
-    public static void begin(List<int[]> relativeTiles) {
+    public static void begin(List<BlueprintTile> relativeTiles) {
         rel.clear();
         rel.addAll(relativeTiles);
         rot = 0;
@@ -47,10 +57,10 @@ public final class BlueprintPlacement {
     }
 
     // Compute transformed absolute tiles when anchoring at (ax, ay)
-    public static List<int[]> transformedAt(int ax, int ay) {
-        List<int[]> out = new ArrayList<>(rel.size());
-        for (int[] p : rel) {
-            int dx = p[0], dy = p[1];
+    public static List<BlueprintTile> transformedAt(int ax, int ay) {
+        List<BlueprintTile> out = new ArrayList<>(rel.size());
+        for (BlueprintTile p : rel) {
+            int dx = p.dx, dy = p.dy;
 
             // flip (mirror X) first
             if (flip) dx = -dx;
@@ -64,7 +74,7 @@ public final class BlueprintPlacement {
                 default:  rx =  dx; ry =  dy; break; // 0°
             }
 
-            out.add(new int[] { ax + rx, ay + ry });
+            out.add(new BlueprintTile(ax + rx, ay + ry, p.categoryId));
         }
         return out;
     }

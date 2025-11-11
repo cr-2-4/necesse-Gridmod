@@ -36,16 +36,12 @@ public final class GridConfig {
     public static float   scr = 0.3f, scg = 0.9f, scb = 1f;
 
     // ----- Blueprint/paint colors -----
-    public static float paintR = 0.95f, paintG = 0.95f, paintB = 0.95f, paintAlpha = 0.50f;
-    public static float eraseR = 1.00f, eraseG = 0.35f, eraseB = 0.35f, eraseAlpha = 0.50f;
-    public static float selectionR = 0.20f, selectionG = 0.80f, selectionB = 1.00f, selectionAlpha = 0.50f;
-    public static float bpGhostR = 1.00f, bpGhostG = 1.00f, bpGhostB = 1.00f, bpGhostAlpha = 0.50f;
+    public static float paintR = 0.95f, paintG = 0.95f, paintB = 0.95f, paintAlpha = 0.95f;
+    public static float eraseR = 1.00f, eraseG = 0.35f, eraseB = 0.35f, eraseAlpha = 0.95f;
+    public static float selectionR = 0.20f, selectionG = 0.80f, selectionB = 1.00f, selectionAlpha = 0.30f;
+    public static float bpGhostR = 1.00f, bpGhostG = 1.00f, bpGhostB = 1.00f, bpGhostAlpha = 0.35f;
     public static String activePaintCategory = PaintCategory.TILES.id();
     private static final HashMap<String, PaintColor> paintCategoryColors = new HashMap<>();
-
-    static {
-        resetPaintCategoryColors();
-    }
 
     public static String selectedBlueprint = "quick";
     public static String selectedGlobalBlueprint = "global_quick";
@@ -89,7 +85,6 @@ public final class GridConfig {
 
     public static void load() {
         try {
-            resetPaintCategoryColors();
             if (!CONFIG_FILE.exists()) { save(); return; }
             LoadData ld = new LoadData(CONFIG_FILE);
 
@@ -139,15 +134,6 @@ public final class GridConfig {
             bpGhostG = ld.getFloat("bpGhostG", bpGhostG);
             bpGhostB = ld.getFloat("bpGhostB", bpGhostB);
             bpGhostAlpha = ld.getFloat("bpGhostAlpha", bpGhostAlpha);
-
-            activePaintCategory = ld.getSafeString("activePaintCategory", activePaintCategory);
-            for (PaintCategory cat : PaintCategory.values()) {
-                float r = ld.getFloat("paintCategory." + cat.id() + ".r", cat.defaultR());
-                float g = ld.getFloat("paintCategory." + cat.id() + ".g", cat.defaultG());
-                float b = ld.getFloat("paintCategory." + cat.id() + ".b", cat.defaultB());
-                float a = ld.getFloat("paintCategory." + cat.id() + ".a", cat.defaultA());
-                paintCategoryColors.put(cat.id(), new PaintColor(r, g, b, a));
-            }
 
             selectedBlueprint = ld.getSafeString("selectedBlueprint", selectedBlueprint);
             selectedGlobalBlueprint = ld.getSafeString("selectedGlobalBlueprint", selectedGlobalBlueprint);
@@ -212,14 +198,6 @@ public final class GridConfig {
             sd.addFloat("eraseR", eraseR); sd.addFloat("eraseG", eraseG); sd.addFloat("eraseB", eraseB); sd.addFloat("eraseAlpha", eraseAlpha);
             sd.addFloat("selectionR", selectionR); sd.addFloat("selectionG", selectionG); sd.addFloat("selectionB", selectionB); sd.addFloat("selectionAlpha", selectionAlpha);
             sd.addFloat("bpGhostR", bpGhostR); sd.addFloat("bpGhostG", bpGhostG); sd.addFloat("bpGhostB", bpGhostB); sd.addFloat("bpGhostAlpha", bpGhostAlpha);
-            for (PaintCategory cat : PaintCategory.values()) {
-                PaintColor color = getPaintColor(cat);
-                sd.addFloat("paintCategory." + cat.id() + ".r", color.r);
-                sd.addFloat("paintCategory." + cat.id() + ".g", color.g);
-                sd.addFloat("paintCategory." + cat.id() + ".b", color.b);
-                sd.addFloat("paintCategory." + cat.id() + ".a", color.a);
-            }
-            sd.addSafeString("activePaintCategory", activePaintCategory);
 
             sd.addSafeString("selectedBlueprint", selectedBlueprint);
             sd.addSafeString("selectedGlobalBlueprint", selectedGlobalBlueprint);
@@ -358,50 +336,5 @@ public final class GridConfig {
         markDirty();
         saveIfDirty();
     }
-
-    public static PaintCategory getActivePaintCategory() {
-        return PaintCategory.byId(activePaintCategory);
-    }
-
-    public static void setActivePaintCategory(PaintCategory category) {
-        if (category == null) category = PaintCategory.TILES;
-        if (!category.id().equals(activePaintCategory)) {
-            activePaintCategory = category.id();
-            markDirty();
-        }
-    }
-
-    // ---------- Paint category helpers ----------
-    public static PaintColor getPaintColor(PaintCategory category) {
-        if (category == null) category = PaintCategory.TILES;
-        PaintColor color = paintCategoryColors.get(category.id());
-        if (color == null) {
-            color = new PaintColor(category.defaultR(), category.defaultG(), category.defaultB(), category.defaultA());
-            paintCategoryColors.put(category.id(), color);
-        }
-        return color;
-    }
-
-    public static void setPaintColor(PaintCategory category, float r, float g, float b, float a) {
-        if (category == null) category = PaintCategory.TILES;
-        paintCategoryColors.put(category.id(), new PaintColor(r, g, b, a));
-        markDirty();
-    }
-
-    public static void resetPaintCategoryColors() {
-        paintCategoryColors.clear();
-        for (PaintCategory cat : PaintCategory.values()) {
-            paintCategoryColors.put(cat.id(), new PaintColor(cat.defaultR(), cat.defaultG(), cat.defaultB(), cat.defaultA()));
-        }
-    }
-
-    public static final class PaintColor {
-        public final float r, g, b, a;
-        public PaintColor(float r, float g, float b, float a) {
-            this.r = clamp01(r);
-            this.g = clamp01(g);
-            this.b = clamp01(b);
-            this.a = clamp01(a);
-        }
-    }
 }
+

@@ -9,6 +9,7 @@ import necesse.level.maps.Level;
 
 public class SettlementBoundsOverlay implements Drawable {
 
+    @SuppressWarnings("unused")
     private final Level level;
     private final GameCamera camera;
 

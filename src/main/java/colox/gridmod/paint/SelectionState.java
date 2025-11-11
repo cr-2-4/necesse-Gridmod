@@ -171,8 +171,8 @@ public final class SelectionState {
 
         // Build quick lookup of painted tiles
         HashSet<Long> painted = new HashSet<>();
-        for (long[] p : PaintState.iterateSnapshot()) {
-            painted.add(key((int)p[0], (int)p[1]));
+        for (PaintState.PaintEntry p : PaintState.iterateSnapshot()) {
+            painted.add(key(p.x, p.y));
         }
         if (painted.isEmpty()) { lastCount = 0; return; }
 

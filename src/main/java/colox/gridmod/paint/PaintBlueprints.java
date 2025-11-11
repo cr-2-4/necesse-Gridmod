@@ -1,5 +1,6 @@
 package colox.gridmod.paint;
 
+import colox.gridmod.config.GridConfig;
 import colox.gridmod.util.ConfigPaths;
 import necesse.engine.save.LoadData;
 import necesse.engine.save.SaveData;
@@ -45,24 +46,24 @@ public final class PaintBlueprints {
         File file = fileFor(name);
 
         try {
-            List<long[]> pts = PaintState.iterateSnapshot();
+            List<PaintState.PaintEntry> pts = PaintState.iterateSnapshot();
             if (pts.isEmpty()) {
                 System.out.println("[GridMod] No painted tiles to save.");
                 return;
             }
 
             int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
-            for (long[] p : pts) {
-                int x = (int)p[0], y = (int)p[1];
+            for (PaintState.PaintEntry p : pts) {
+                int x = p.x, y = p.y;
                 if (x < minX) minX = x;
                 if (y < minY) minY = y;
             }
 
             StringBuilder sb = new StringBuilder(pts.size() * 8);
-            for (long[] p : pts) {
-                int x = (int)p[0] - minX;
-                int y = (int)p[1] - minY;
-                sb.append(x).append(',').append(y).append(';');
+            for (PaintState.PaintEntry p : pts) {
+                int x = p.x - minX;
+                int y = p.y - minY;
+                sb.append(x).append(',').append(y).append(',').append(p.categoryId).append(';');
             }
 
             SaveData sd = new SaveData("paint_blueprint");
@@ -78,10 +79,10 @@ public final class PaintBlueprints {
     }
 
     /** Load relative blueprint as dx,dy offsets. */
-    public static List<int[]> loadRelative(String name) {
+    public static List<colox.gridmod.paint.BlueprintPlacement.BlueprintTile> loadRelative(String name) {
         ensureDir();
         File file = fileFor(name);
-        List<int[]> rel = new ArrayList<>();
+        List<colox.gridmod.paint.BlueprintPlacement.BlueprintTile> rel = new ArrayList<>();
         if (!file.exists()) {
             System.err.println("[GridMod] Blueprint not found: " + file.getAbsolutePath());
             return rel;
@@ -94,10 +95,11 @@ public final class PaintBlueprints {
                 for (String pair : pairs) {
                     if (pair.isEmpty()) continue;
                     String[] xy = pair.split(",");
-                    if (xy.length != 2) continue;
+                    if (xy.length < 2) continue;
                     int dx = Integer.parseInt(xy[0].trim());
                     int dy = Integer.parseInt(xy[1].trim());
-                    rel.add(new int[]{dx, dy});
+                    String cat = (xy.length >= 3) ? xy[2].trim() : GridConfig.getActivePaintCategory().id();
+                    rel.add(new colox.gridmod.paint.BlueprintPlacement.BlueprintTile(dx, dy, cat));
                 }
             }
             System.out.println("[GridMod] Loaded blueprint '" + name + "' tiles=" + rel.size());
@@ -201,11 +203,12 @@ public final class PaintBlueprints {
             if (x < minX) minX = x;
             if (y < minY) minY = y;
         }
-        StringBuilder sb = new StringBuilder(absPoints.size() * 8);
+        StringBuilder sb = new StringBuilder(absPoints.size() * 12);
         for (long[] p : absPoints) {
             int x = (int)p[0] - minX;
             int y = (int)p[1] - minY;
-            sb.append(x).append(',').append(y).append(';');
+            String cat = PaintState.getCategory((int)p[0], (int)p[1]);
+            sb.append(x).append(',').append(y).append(',').append(cat).append(';');
         }
         try {
             SaveData sd = new SaveData("paint_blueprint");
@@ -267,12 +270,10 @@ public final class PaintBlueprints {
         File f = globalFileFor(name);
         int count = 0;
         try {
-            List<long[]> pts = PaintState.iterateSnapshot();
-            StringBuilder sb = new StringBuilder(pts.size() * 10);
-            for (long[] p : pts) {
-                int x = (int)p[0];
-                int y = (int)p[1];
-                sb.append(x).append(',').append(y).append(';');
+            List<PaintState.PaintEntry> pts = PaintState.iterateSnapshot();
+            StringBuilder sb = new StringBuilder(pts.size() * 14);
+            for (PaintState.PaintEntry p : pts) {
+                sb.append(p.x).append(',').append(p.y).append(',').append(p.categoryId).append(';');
             }
             SaveData sd = new SaveData("paint_blueprint");
             sd.addSafeString("points", sb.toString());
@@ -304,10 +305,11 @@ public final class PaintBlueprints {
                 for (String pair : pairs) {
                     if (pair.isEmpty()) continue;
                     String[] xy = pair.split(",");
-                    if (xy.length != 2) continue;
+                    if (xy.length < 2) continue;
                     int x = Integer.parseInt(xy[0].trim());
                     int y = Integer.parseInt(xy[1].trim());
-                    PaintState.add(x, y);
+                    String cat = (xy.length >= 3) ? xy[2].trim() : GridConfig.getActivePaintCategory().id();
+                    PaintState.add(x, y, cat);
                     restored++;
                 }
             }
@@ -365,12 +367,10 @@ public final class PaintBlueprints {
         ensureDir();
         File file = legacyGlobalFile();
         try {
-            List<long[]> pts = PaintState.iterateSnapshot();
-            StringBuilder sb = new StringBuilder(pts.size() * 10);
-            for (long[] p : pts) {
-                int x = (int)p[0];
-                int y = (int)p[1];
-                sb.append(x).append(',').append(y).append(';');
+            List<PaintState.PaintEntry> pts = PaintState.iterateSnapshot();
+            StringBuilder sb = new StringBuilder(pts.size() * 14);
+            for (PaintState.PaintEntry p : pts) {
+                sb.append(p.x).append(',').append(p.y).append(',').append(p.categoryId).append(';');
             }
             SaveData sd = new SaveData("paint_blueprint");
             sd.addSafeString("points", sb.toString());
@@ -396,10 +396,11 @@ public final class PaintBlueprints {
                 for (String pair : pairs) {
                     if (pair.isEmpty()) continue;
                     String[] xy = pair.split(",");
-                    if (xy.length != 2) continue;
+                    if (xy.length < 2) continue;
                     int x = Integer.parseInt(xy[0].trim());
                     int y = Integer.parseInt(xy[1].trim());
-                    PaintState.add(x, y);
+                    String catId = (xy.length >= 3) ? xy[2].trim() : GridConfig.getActivePaintCategory().id();
+                    PaintState.add(x, y, catId);
                     restored++;
                 }
             }

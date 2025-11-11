@@ -14,6 +14,7 @@ import necesse.gfx.forms.components.FormCheckBox;
 import necesse.gfx.forms.components.FormContentBox;
 import necesse.gfx.forms.components.FormCustomDraw;
 import necesse.gfx.forms.components.FormDropdownSelectionButton;
+import necesse.gfx.forms.components.FormContentIconButton;
 import necesse.gfx.forms.components.FormFairTypeLabel;
 import necesse.gfx.forms.components.FormInputSize;
 import necesse.gfx.forms.components.FormLabel;
@@ -31,6 +32,7 @@ import colox.gridmod.config.GridConfig;
 import colox.gridmod.input.GridKeybinds;
 import colox.gridmod.paint.BlueprintPlacement;
 import colox.gridmod.paint.PaintBlueprints;
+import colox.gridmod.paint.PaintCategory;
 import colox.gridmod.paint.PaintState;
 import colox.gridmod.paint.SelectionState;
 
@@ -80,6 +82,9 @@ public class PaintTab {
     }
 
     private final FormContentBox box;
+    private final Runnable openBPColors;
+    private final Runnable openCategoryColors;
+    private FormDropdownSelectionButton<String> paintCategorySelector;
 
     // Paint basics
     private FormCheckBox  paintEnableCheck;
@@ -126,8 +131,10 @@ public class PaintTab {
     private long bpStatusClearAtMs = 0L;
     private long gbpStatusClearAtMs = 0L;
 
-    public PaintTab(FormContentBox box) {
+    public PaintTab(FormContentBox box, Runnable openBPColors, Runnable openCategoryColors) {
         this.box = box;
+        this.openBPColors = (openBPColors == null) ? () -> {} : openBPColors;
+        this.openCategoryColors = (openCategoryColors == null) ? () -> {} : openCategoryColors;
         build();
     }
 
@@ -159,6 +166,10 @@ public class PaintTab {
         int pY = py + CARD_PAD_Y;
 
         add(new FormLabel("Paint basics", new FontOptions(16), FormLabel.ALIGN_LEFT, px, pY), px, pY);
+        // Inline cog to open paint/blueprint color options
+        int cogX = px + 220;
+        add(new FormContentIconButton(cogX, pY - 4, FormInputSize.SIZE_24, ButtonColor.BASE, box.getInterfaceStyle().config_button_32), cogX, pY - 4)
+            .onClicked(e -> this.openBPColors.run());
         pY += LINE - 6;
 
         // NEW: visual-only toggle for paint layer visibility
@@ -175,6 +186,24 @@ public class PaintTab {
             PaintState.setEnabled(((FormCheckBox)e.from).checked)
         );
         pY += LINE;
+
+        add(new FormLabel("Choose paint", new FontOptions(12), FormLabel.ALIGN_LEFT, px, pY), px, pY);
+        pY += LINE - 10;
+        int ddW = Math.max(180, Math.min(240, usableRow - 60));
+        paintCategorySelector = add(new FormDropdownSelectionButton<>(px, pY - 2, FormInputSize.SIZE_24, ButtonColor.BASE, ddW), px, pY - 2);
+        for (PaintCategory cat : PaintCategory.values()) {
+            paintCategorySelector.options.add(cat.id(), new StaticMessage(cat.label()));
+        }
+        PaintCategory initialCategory = GridConfig.getActivePaintCategory();
+        paintCategorySelector.setSelected(initialCategory.id(), new StaticMessage(initialCategory.label()));
+        paintCategorySelector.onSelected(e -> {
+            PaintCategory selected = PaintCategory.byId(e.value);
+            GridConfig.setActivePaintCategory(selected);
+        });
+        int categoryCogX = px + ddW + 8;
+        add(new FormContentIconButton(categoryCogX, pY - 4, FormInputSize.SIZE_24, ButtonColor.BASE, box.getInterfaceStyle().config_button_32), categoryCogX, pY - 4)
+            .onClicked(e -> this.openCategoryColors.run());
+        pY += FormInputSize.SIZE_24.height + 10;
 
         int brushTrackWidth = Math.max(160, usableRow - 120);
         brushSlider = add(new FormSlider("Brush size", px, pY, PaintState.getBrush(), 1, 32, brushTrackWidth), px, pY);
@@ -269,7 +298,7 @@ public class PaintTab {
         bpLoadBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
             String name = currentBP();
             if (name.isBlank()) return;
-            List<int[]> rel = PaintBlueprints.loadRelative(name);
+            List<BlueprintPlacement.BlueprintTile> rel = PaintBlueprints.loadRelative(name);
             if (!rel.isEmpty()) {
                 BlueprintPlacement.begin(rel);
                 setBpStatus("Loaded \"" + name + "\" (" + rel.size() + " cells)");
