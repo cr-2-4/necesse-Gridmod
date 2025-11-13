@@ -42,6 +42,15 @@ public final class PaintBlueprints {
 
     /** Save all current paint as relative (unchanged behavior). */
     public static void saveBlueprint(String name) {
+        List<long[]> selection = SelectionState.getSelectedPoints();
+        if (!selection.isEmpty()) {
+            saveBlueprintFromSelection(name, selection);
+            return;
+        }
+        saveEntireBlueprint(name);
+    }
+
+    private static void saveEntireBlueprint(String name) {
         ensureDir();
         File file = fileFor(name);
 
@@ -419,6 +428,47 @@ public final class PaintBlueprints {
 
     static String safeName(String name) {
         return name.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+    }
+
+    private static void saveBlueprintFromSelection(String name, List<long[]> selection) {
+        ensureDir();
+        File file = fileFor(name);
+
+        try {
+            if (selection.isEmpty()) {
+                System.out.println("[GridMod] Selection is empty; nothing to save.");
+                return;
+            }
+
+            int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
+            for (long[] pt : selection) {
+                int x = (int)pt[0];
+                int y = (int)pt[1];
+                if (x < minX) minX = x;
+                if (y < minY) minY = y;
+            }
+
+            StringBuilder sb = new StringBuilder(selection.size() * 8);
+            for (long[] pt : selection) {
+                int tx = (int)pt[0];
+                int ty = (int)pt[1];
+                PaintState.PaintEntry entry = PaintState.getPaintEntry(tx, ty);
+                if (entry == null) continue;
+                int x = tx - minX;
+                int y = ty - minY;
+                sb.append(x).append(',').append(y).append(',').append(entry.categoryId).append(';');
+            }
+
+            SaveData sd = new SaveData("paint_blueprint");
+            sd.addSafeString("points", sb.toString());
+            sd.addInt("normX", minX);
+            sd.addInt("normY", minY);
+            sd.saveScript(file);
+
+            System.out.println("[GridMod] Saved selection blueprint: " + file.getAbsolutePath());
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
     }
 
     private static long key(int x, int y) {

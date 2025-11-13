@@ -306,16 +306,20 @@ public final class PaintControls {
         boolean lmbDown    = input.isKeyDown(-100);
         boolean lmbUpEdge  = (!lmbDown && !lmbPressed);
 
-        if (lmbPressed && tile != null && !SelectionState.isDragging()) {
+        if (SelectionState.getMode() != SelectionState.Mode.ALL && lmbPressed && tile != null && !SelectionState.isDragging()) {
             SelectionState.beginDrag(tile[0], tile[1]);
         }
 
-        if (SelectionState.isDragging() && lmbDown && tile != null) {
+        if (SelectionState.getMode() != SelectionState.Mode.ALL && SelectionState.isDragging() && lmbDown && tile != null) {
             SelectionState.updateDrag(tile[0], tile[1]);
         }
 
-        if (SelectionState.isDragging() && lmbUpEdge) {
+        if (SelectionState.getMode() != SelectionState.Mode.ALL && SelectionState.isDragging() && lmbUpEdge) {
             SelectionState.endDrag();
+        }
+
+        if (SelectionState.getMode() == SelectionState.Mode.ALL) {
+            SelectionState.refreshSelection();
         }
     }
 

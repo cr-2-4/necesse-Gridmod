@@ -422,6 +422,7 @@ public class PaintTab {
         selModeDropdown.options.add("Rect",             new StaticMessage("Mode: Rectangle"));
         selModeDropdown.options.add("Lasso (edge)",     new StaticMessage("Mode: Lasso (stroke edges)"));
         selModeDropdown.options.add("Lasso (edge+fill)",new StaticMessage("Mode: Lasso (stroke + fill)"));
+        selModeDropdown.options.add("All",              new StaticMessage("Mode: Select all"));
         selModeDropdown.setSelected("None", new StaticMessage("Mode: None"));
         selModeDropdown.onSelected(e -> {
             String v = e.value == null ? "None" : e.value;
@@ -431,6 +432,7 @@ public class PaintTab {
                 case "Rect":               SelectionState.setMode(SelectionState.Mode.RECT);      break;
                 case "Lasso (edge)":       SelectionState.setMode(SelectionState.Mode.EDGE);      break;
                 case "Lasso (edge+fill)":  SelectionState.setMode(SelectionState.Mode.EDGE_FILL); break;
+                case "All":                SelectionState.setMode(SelectionState.Mode.ALL);      break;
             }
             updateSelCountLabel();
         });

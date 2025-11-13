@@ -4,9 +4,12 @@ import java.awt.Rectangle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 import colox.gridmod.config.GridConfig;
 import colox.gridmod.paint.BlueprintPlacement;
@@ -642,6 +645,13 @@ public final class PaintQuickPaletteOverlay {
             refresh.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> refreshBlueprintOptions());
 
             int y = 6 + FormInputSize.SIZE_24.height + 8;
+            int actionWidth = (PANEL_WIDTH - 36) / 2;
+            FormTextButton createBtn = content.addComponent(new FormTextButton("New", 12, y, actionWidth, FormInputSize.SIZE_24, ButtonColor.BASE));
+            createBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleNew());
+            FormTextButton deleteBtn = content.addComponent(new FormTextButton("Delete", 24 + actionWidth, y, actionWidth, FormInputSize.SIZE_24, ButtonColor.BASE));
+            deleteBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleDelete());
+            y += FormInputSize.SIZE_24.height + 6;
+
             FormTextButton save = content.addComponent(new FormTextButton("Save (dbl-click)", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
             save.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleSave());
             y += FormInputSize.SIZE_24.height + 6;
@@ -704,7 +714,7 @@ public final class PaintQuickPaletteOverlay {
         private int buildModeButtons(FormContentBox content, int y) {
             SelectionState.Mode[] modes = SelectionState.Mode.values();
             int btnW = (PANEL_WIDTH - 30) / Math.min(4, modes.length);
-            SelectionState.Mode[] order = new SelectionState.Mode[]{SelectionState.Mode.RECT, SelectionState.Mode.EDGE, SelectionState.Mode.EDGE_FILL, SelectionState.Mode.LASSO_FILL};
+            SelectionState.Mode[] order = new SelectionState.Mode[]{SelectionState.Mode.RECT, SelectionState.Mode.EDGE, SelectionState.Mode.EDGE_FILL, SelectionState.Mode.LASSO_FILL, SelectionState.Mode.ALL};
             int x = 12;
             modeButtons = new ArrayList<>();
             for (SelectionState.Mode mode : order) {
@@ -724,6 +734,7 @@ public final class PaintQuickPaletteOverlay {
                 case EDGE: return "Edge";
                 case EDGE_FILL: return "Edge+Fill";
                 case LASSO_FILL: return "Lasso";
+                case ALL: return "All";
                 case RECT:
                 default: return "Rect";
             }
@@ -762,8 +773,45 @@ public final class PaintQuickPaletteOverlay {
             updateModeButtons();
         }
 
+        private void handleNew() {
+            String newName = proposeNewBlueprintName();
+            boolean created = PaintBlueprints.createEmpty(newName);
+            currentBlueprint = newName;
+            GridConfig.selectedBlueprint = newName;
+            GridConfig.markDirty(); GridConfig.saveIfDirty();
+            refreshBlueprintOptions();
+            statusLabel.setText(created ? "Created '" + newName + "'" : "Selected '" + newName + "'");
+        }
+
+        private void handleDelete() {
+            String name = getCurrentBlueprintName();
+            if (name == null || name.isBlank()) {
+                statusLabel.setText("No blueprint selected");
+                return;
+            }
+            boolean ok = PaintBlueprints.deleteBlueprint(name);
+            if (ok) {
+                currentBlueprint = "quick";
+                GridConfig.selectedBlueprint = currentBlueprint;
+                GridConfig.markDirty(); GridConfig.saveIfDirty();
+                refreshBlueprintOptions();
+                statusLabel.setText("Deleted '" + name + "'");
+            } else {
+                statusLabel.setText("Delete failed");
+            }
+        }
+
         private String getCurrentBlueprintName() {
             return currentBlueprint;
+        }
+
+        private String proposeNewBlueprintName() {
+            Set<String> existing = new HashSet<>(Arrays.asList(PaintBlueprints.listBlueprints()));
+            for (int i = 1; i <= 9999; i++) {
+                String cand = "bp_" + i;
+                if (!existing.contains(cand)) return cand;
+            }
+            return "bp_new";
         }
 
         private void refreshBlueprintOptions() {

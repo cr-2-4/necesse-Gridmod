@@ -19,7 +19,7 @@ import colox.gridmod.config.GridConfig;
  */
 public final class SelectionState {
 
-    public enum Mode { NONE, RECT, EDGE, EDGE_FILL, LASSO_FILL }
+    public enum Mode { NONE, RECT, EDGE, EDGE_FILL, LASSO_FILL, ALL }
 
     // -------- Singleton --------
     private static Mode mode = Mode.NONE;
@@ -237,6 +237,9 @@ public final class SelectionState {
                 }
                 break;
             }
+            case ALL:
+                selected.addAll(painted);
+                break;
             default: break;
         }
 
