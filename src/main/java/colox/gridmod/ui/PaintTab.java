@@ -86,6 +86,7 @@ public class PaintTab {
     private final Runnable openPaintColors;
     private FormDropdownSelectionButton<String> paintCategorySelector;
     private FormDropdownSelectionButton<String> layerFilterDropdown;
+    private FormCheckBox eraseManualCheck;
 
     // Paint basics
     private FormCheckBox  paintEnableCheck;
@@ -184,9 +185,6 @@ public class PaintTab {
         pY += LINE;
 
         add(new FormLabel("Choose paint", new FontOptions(12), FormLabel.ALIGN_LEFT, px, pY), px, pY);
-        int cogX = px + usableRow - 32;
-        FormContentIconButton paintCog = add(new FormContentIconButton(cogX, pY - 4, FormInputSize.SIZE_24, ButtonColor.BASE, box.getInterfaceStyle().config_button_32), cogX, pY - 4);
-        paintCog.onClicked(e -> this.openPaintColors.run());
         pY += LINE - 10;
         int ddW = Math.max(180, Math.min(240, usableRow - 60));
         paintCategorySelector = add(new FormDropdownSelectionButton<>(px, pY - 2, FormInputSize.SIZE_24, ButtonColor.BASE, ddW), px, pY - 2);
@@ -198,8 +196,13 @@ public class PaintTab {
         paintCategorySelector.onSelected(e -> {
             PaintCategory selected = PaintCategory.byId(e.value);
             GridConfig.setActivePaintCategory(selected);
+            refreshEraseFilterDropdown();
         });
         pY += FormInputSize.SIZE_24.height + 10;
+
+        int cogX = px + ddW + 8;
+        FormContentIconButton paintCog = add(new FormContentIconButton(cogX, pY - FormInputSize.SIZE_24.height - 6, FormInputSize.SIZE_24, ButtonColor.BASE, box.getInterfaceStyle().config_button_32), cogX, pY - FormInputSize.SIZE_24.height - 6);
+        paintCog.onClicked(e -> this.openPaintColors.run());
 
         int brushTrackWidth = Math.max(160, usableRow - 120);
         brushSlider = add(new FormSlider("Brush size", px, pY, PaintState.getBrush(), 1, 32, brushTrackWidth), px, pY);
@@ -220,22 +223,33 @@ public class PaintTab {
         paintClearBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> PaintState.clear());
         pY += FormInputSize.SIZE_24.height + 8;
 
-        add(new FormLabel("Erase / selection target", new FontOptions(12), FormLabel.ALIGN_LEFT, px, pY), px, pY);
+        add(new FormLabel("Erase by layer", new FontOptions(12), FormLabel.ALIGN_LEFT, px, pY), px, pY);
         pY += LINE - 10;
         int filterDdWidth = Math.max(180, Math.min(240, usableRow - 60));
         layerFilterDropdown = add(new FormDropdownSelectionButton<>(px, pY - 2, FormInputSize.SIZE_24, ButtonColor.BASE, filterDdWidth), px, pY - 2);
         for (PaintLayerFilter filter : PaintLayerFilter.values()) {
             layerFilterDropdown.options.add(filter.id(), new StaticMessage(filter.label()));
         }
-        PaintLayerFilter currentFilter = GridConfig.getPaintLayerFilter();
-        layerFilterDropdown.setSelected(currentFilter.id(), new StaticMessage(currentFilter.label()));
         layerFilterDropdown.onSelected(e -> {
+            if (!GridConfig.isPaintEraseOverride()) {
+                refreshEraseFilterDropdown();
+                return;
+            }
             PaintLayerFilter selectedFilter = PaintLayerFilter.byId(e.value);
-            GridConfig.setPaintLayerFilter(selectedFilter);
-            SelectionState.refreshSelection();
+            GridConfig.setPaintEraseFilter(selectedFilter);
             GridConfig.saveIfDirty();
         });
         pY += FormInputSize.SIZE_24.height + 10;
+
+        eraseManualCheck = add(new FormCheckBox("Select erase layer manually", px, pY, GridConfig.isPaintEraseOverride()), px, pY);
+        eraseManualCheck.onClicked(e -> {
+            GridConfig.setPaintEraseOverride(eraseManualCheck.checked);
+            GridConfig.saveIfDirty();
+            refreshEraseFilterDropdown();
+        });
+        pY += LINE;
+
+        refreshEraseFilterDropdown();
 
         finishCard(cardPaint, pY);
         py = cardPaint.getY() + cardPaint.height + 10;
@@ -755,6 +769,17 @@ public class PaintTab {
 
     private void updateBrushValueLabel(int size) {
         if (brushValueLabel != null) brushValueLabel.setText(size + "x" + size);
+    }
+
+    private void refreshEraseFilterDropdown() {
+        if (layerFilterDropdown == null) return;
+        boolean manual = GridConfig.isPaintEraseOverride();
+        if (eraseManualCheck != null) eraseManualCheck.checked = manual;
+        layerFilterDropdown.setActive(manual);
+        PaintLayerFilter displayFilter = manual
+                ? GridConfig.getPaintEraseFilter()
+                : GridConfig.getEffectivePaintEraseFilter();
+        layerFilterDropdown.setSelected(displayFilter.id(), new StaticMessage(displayFilter.label()));
     }
 
     private void updateTransformButtonsActive() {

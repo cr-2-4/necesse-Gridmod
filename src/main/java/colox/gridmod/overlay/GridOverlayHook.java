@@ -42,7 +42,7 @@ public class GridOverlayHook {
     ) {
         if (mob == perspective) {
             // Per-frame input for painting/selection/placement
-            PaintControls.tick(level, camera);
+            PaintControls.tick(level, camera, perspective);
 
             // Grid
             overlayList.add(100_000, new GridDrawable(level, camera));

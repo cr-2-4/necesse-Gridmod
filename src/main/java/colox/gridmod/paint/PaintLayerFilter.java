@@ -7,10 +7,11 @@ import java.util.EnumSet;
  */
 public enum PaintLayerFilter {
     ALL("All layers", EnumSet.allOf(PaintLayer.class)),
-    BOTTOM("Bottom (floors/terrain)", EnumSet.of(PaintLayer.TERRAIN)),
-    MIDDLE("Middle (objects)", EnumSet.of(PaintLayer.OBJECT)),
-    WALL("Walls / background", EnumSet.of(PaintLayer.WALL)),
-    TOP("Top (table & decor)", EnumSet.of(PaintLayer.TABLETOP));
+    BOTTOM("Bottom (floors / terrain)", EnumSet.of(PaintLayer.TERRAIN)),
+    MIDDLE("Middle (objects + wall background + lighting)", EnumSet.of(PaintLayer.OBJECT, PaintLayer.WALL, PaintLayer.WALL_LIGHTING)),
+    WALL_BACKGROUND("Wall background only", EnumSet.of(PaintLayer.WALL)),
+    WALL_ATTACHMENTS("Wall attachments only", EnumSet.of(PaintLayer.WALL_ATTACHMENT)),
+    TOP("Top (table decor + wall attachments)", EnumSet.of(PaintLayer.TABLETOP, PaintLayer.WALL_ATTACHMENT));
 
     private final String label;
     private final EnumSet<PaintLayer> layers;
@@ -36,10 +37,24 @@ public enum PaintLayerFilter {
     public static PaintLayerFilter byId(String id) {
         if (id != null) {
             String needle = id.trim().toLowerCase();
+            if ("wall".equals(needle)) return WALL_BACKGROUND;
             for (PaintLayerFilter filter : values()) {
                 if (filter.id().equals(needle)) return filter;
             }
         }
         return ALL;
+    }
+
+    public static PaintLayerFilter forLayer(PaintLayer layer) {
+        if (layer == null) return ALL;
+        switch (layer) {
+            case TERRAIN: return BOTTOM;
+            case OBJECT: return MIDDLE;
+            case WALL: return MIDDLE;
+            case WALL_LIGHTING: return MIDDLE;
+            case WALL_ATTACHMENT: return TOP;
+            case TABLETOP: return TOP;
+            default: return ALL;
+        }
     }
 }

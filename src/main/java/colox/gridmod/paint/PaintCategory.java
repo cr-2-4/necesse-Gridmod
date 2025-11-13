@@ -13,14 +13,16 @@ public enum PaintCategory {
 
     OBJECTS("objects", "Objects", 0.95f, 0.35f, 0.35f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT),
     SEEDS("seeds", "Seeds / Crops", 0.35f, 0.80f, 0.30f, 0.50f, PaintLayer.OBJECT, PaintStyle.CENTER_DOT),
-    CRAFTING("crafting", "Crafting Stations", 0.95f, 0.65f, 0.25f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT),
-    LIGHTING("lighting", "Lighting", 1.00f, 0.90f, 0.55f, 0.50f, PaintLayer.TABLETOP, PaintStyle.INSET_RECT),
+    CRAFTING("crafting", "Crafting Stations", 0.95f, 0.65f, 0.25f, 0.50f, PaintLayer.OBJECT, PaintStyle.PLUS_SIGN),
+    LIGHTING_FLOOR("lighting_floor", "Lighting (Floor)", 1.00f, 0.90f, 0.55f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT),
+    LIGHTING_WALL("lighting_wall", "Lighting (Wall/Decor)", 1.00f, 0.90f, 0.55f, 0.50f, PaintLayer.WALL_LIGHTING, PaintStyle.TOP_STRIP),
     FURNITURE("furniture", "Furniture", 0.75f, 0.55f, 0.35f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT),
-    DECOR("decor", "Decorations", 0.90f, 0.40f, 0.80f, 0.50f, PaintLayer.TABLETOP, PaintStyle.INSET_RECT),
-    WALLS("walls", "Walls (Background)", 0.65f, 0.65f, 0.65f, 0.50f, PaintLayer.WALL, PaintStyle.TOP_STRIP),
-    DOORS("doors", "Doors", 0.70f, 0.45f, 0.25f, 0.50f, PaintLayer.WALL, PaintStyle.TOP_STRIP),
-    FENCES("fences", "Fences", 0.75f, 0.75f, 0.35f, 0.50f, PaintLayer.WALL, PaintStyle.OUTLINE),
-    FENCE_GATES("fence_gates", "Fence Gates", 0.90f, 0.75f, 0.40f, 0.50f, PaintLayer.WALL, PaintStyle.OUTLINE),
+    DECOR("decor", "Decorations", 0.90f, 0.40f, 0.80f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT),
+    WALLS("walls", "Walls (Background)", 0.65f, 0.65f, 0.65f, 0.50f, PaintLayer.WALL, PaintStyle.TRIANGLE),
+    WALL_FIXTURES("wall_fixtures", "Wall Fixtures", 0.95f, 0.55f, 0.15f, 0.65f, PaintLayer.WALL_ATTACHMENT, PaintStyle.TOP_STRIP),
+    DOORS("doors", "Doors", 0.70f, 0.45f, 0.25f, 0.50f, PaintLayer.WALL, PaintStyle.DOOR_ICON),
+    FENCES("fences", "Fences", 0.75f, 0.75f, 0.35f, 0.50f, PaintLayer.WALL, PaintStyle.TRIANGLE),
+    FENCE_GATES("fence_gates", "Fence Gates", 0.90f, 0.75f, 0.40f, 0.50f, PaintLayer.WALL, PaintStyle.DOOR_ICON),
     TRAPS("traps", "Traps", 0.95f, 0.20f, 0.20f, 0.50f, PaintLayer.OBJECT, PaintStyle.CENTER_DOT),
     LANDSCAPING("landscaping", "Landscaping Objects", 0.30f, 0.60f, 0.30f, 0.50f, PaintLayer.OBJECT, PaintStyle.INSET_RECT),
     TABLE_DECOR("table_decor", "Table Decorations", 0.95f, 0.75f, 0.90f, 0.50f, PaintLayer.TABLETOP, PaintStyle.QUARTER_CORNER),
@@ -74,6 +76,7 @@ public enum PaintCategory {
         if (id == null || id.isEmpty()) return defaultCategory();
         String needle = id.trim().toLowerCase(Locale.ROOT);
         if ("tiles".equals(needle)) return FLOORS; // legacy alias
+        if ("lighting".equals(needle)) return LIGHTING_FLOOR; // legacy single lighting entry
         for (PaintCategory cat : values()) {
             if (cat.id.equals(needle)) return cat;
         }

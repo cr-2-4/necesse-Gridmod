@@ -5,10 +5,12 @@ package colox.gridmod.paint;
  * placement priority and render ordering (low values draw first).
  */
 public enum PaintLayer {
-    TERRAIN(0, 0.35f),          // floors / natural tiles
-    OBJECT(10, 0.55f),          // placeables that sit on top of terrain
-    WALL(20, 0.7f),             // background walls, windows, wall mounts
-    TABLETOP(30, 0.9f);         // table decorations / micro objects
+    TERRAIN(0, 0.35f),             // floors / natural tiles
+    OBJECT(10, 0.55f),             // placeables that sit on top of terrain
+    WALL(20, 0.7f),                // background walls
+    WALL_LIGHTING(23, 0.78f),      // lights mounted on/near walls (should appear over walls)
+    WALL_ATTACHMENT(25, 0.75f),    // wall-mounted fixtures (windows/candles/decor)
+    TABLETOP(30, 0.9f);            // table decorations / micro objects
 
     private final int drawOrder;
     private final float alphaScale;

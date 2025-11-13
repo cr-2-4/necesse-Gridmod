@@ -351,8 +351,8 @@ public class GridUIForm extends Form {
         enable.onClicked((FormEventListener<FormInputEvent<FormCheckBox>>) e -> {
             boolean next = ((FormCheckBox)e.from).checked;
             boolean prev = GridConfig.settlementEnabled;
-            if (next && !prev && !GridConfig.hasSettlementAnchor()) {
-                PaintControls.placeHere();
+            if (next && !prev && !GridConfig.hasSettlementFlag()) {
+                System.out.println("[GridMod] Settlement flag not set; use the keybind to pick a location before enabling.");
             }
             GridConfig.settlementEnabled = next;
             GridConfig.markDirty(); GridConfig.saveIfDirty();
@@ -361,9 +361,9 @@ public class GridUIForm extends Form {
 
         // Place here
         int btnW = 150;
-        FormTextButton placeBtn = addTo(settlementBox, new FormTextButton("Place here", sx, sy - 2, btnW, FormInputSize.SIZE_24, ButtonColor.BASE));
+        FormTextButton placeBtn = addTo(settlementBox, new FormTextButton("Place at settlement flag", sx, sy - 2, btnW, FormInputSize.SIZE_24, ButtonColor.BASE));
         placeBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
-            PaintControls.placeHereAndEnable();
+            PaintControls.placeAtCurrentSettlementFlag();
             GridConfig.markDirty(); GridConfig.saveIfDirty();
             enable.checked = true;
             refreshSettlementInfo();
@@ -383,18 +383,8 @@ public class GridUIForm extends Form {
             String nextMode = e.value;
             if (!Arrays.asList("builtin", "manual").contains(nextMode)) return;
 
-            int oldSide = GridConfig.currentTierSideTiles();
-
             GridConfig.settlementMode = nextMode;
             GridConfig.settlementTier = Math.max(1, Math.min(GridConfig.maxTier(), GridConfig.settlementTier));
-
-            int newSide = GridConfig.currentTierSideTiles();
-
-            if (GridConfig.hasSettlementAnchor()) {
-                int halfDelta = (newSide - oldSide) / 2;
-                GridConfig.settlementAnchorTx -= halfDelta;
-                GridConfig.settlementAnchorTy -= halfDelta;
-            }
 
             GridConfig.markDirty(); GridConfig.saveIfDirty();
             settlementModeDD.setSelected(nextMode, modeLabel(nextMode));
@@ -410,17 +400,7 @@ public class GridUIForm extends Form {
         settlementTierDD.onSelected(e -> {
             try {
                 int wanted = Integer.parseInt(e.value);
-                int oldSide = GridConfig.currentTierSideTiles();
-
                 GridConfig.settlementTier = Math.max(1, Math.min(GridConfig.maxTier(), wanted));
-
-                int newSide = GridConfig.currentTierSideTiles();
-
-                if (GridConfig.hasSettlementAnchor()) {
-                    int halfDelta = (newSide - oldSide) / 2;
-                    GridConfig.settlementAnchorTx -= halfDelta;
-                    GridConfig.settlementAnchorTy -= halfDelta;
-                }
 
                 GridConfig.markDirty(); GridConfig.saveIfDirty();
                 refreshSettlementInfo();

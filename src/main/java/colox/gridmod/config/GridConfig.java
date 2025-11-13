@@ -7,6 +7,7 @@ import necesse.engine.save.LoadData;
 import necesse.engine.save.SaveData;
 import colox.gridmod.paint.PaintCategory;
 import colox.gridmod.paint.PaintLayerFilter;
+import colox.gridmod.paint.SelectionState;
 import colox.gridmod.util.ConfigPaths;
 
 public final class GridConfig {
@@ -43,7 +44,9 @@ public final class GridConfig {
     public static float bpGhostR = 1.00f, bpGhostG = 1.00f, bpGhostB = 1.00f, bpGhostAlpha = 0.50f;
     public static String activePaintCategory = PaintCategory.defaultCategory().id();
     public static boolean hoverLabelsEnabled = true;
-    public static PaintLayerFilter paintLayerFilter = PaintLayerFilter.ALL;
+    public static PaintLayerFilter paintEraseFilter = PaintLayerFilter.ALL;
+    public static boolean paintEraseOverride = false;
+    public static PaintLayerFilter paintSelectionFilter = PaintLayerFilter.ALL;
     private static final HashMap<String, PaintColor> paintCategoryColors = new HashMap<>();
     private static final HashMap<String, Boolean> hoverCategoryVisibility = new HashMap<>();
 
@@ -73,8 +76,8 @@ public final class GridConfig {
     public static int   settlementOutlineThickness = 2;
     public static float settlementFillAlpha = 0.12f;
 
-    public static int settlementAnchorTx = 0;
-    public static int settlementAnchorTy = 0;
+    public static int settlementFlagTx = 0;
+    public static int settlementFlagTy = 0;
 
     private static final int[] BUILTIN_SIDE_TILES = new int[] {
         80, 112, 144, 176, 208, 240, 272
@@ -156,7 +159,9 @@ public final class GridConfig {
             bpGhostAlpha = ld.getFloat("bpGhostAlpha", bpGhostAlpha);
 
             activePaintCategory = ld.getSafeString("activePaintCategory", activePaintCategory);
-            paintLayerFilter = PaintLayerFilter.byId(ld.getSafeString("paintLayerFilter", paintLayerFilter.id()));
+            paintEraseFilter = PaintLayerFilter.byId(ld.getSafeString("paintEraseFilter", paintEraseFilter.id()));
+            paintEraseOverride = ld.getBoolean("paintEraseOverride", paintEraseOverride);
+            paintSelectionFilter = PaintLayerFilter.byId(ld.getSafeString("paintSelectionFilter", paintSelectionFilter.id()));
             for (PaintCategory cat : PaintCategory.values()) {
                 float r = ld.getFloat("paintCategory." + cat.id() + ".r", cat.defaultR());
                 float g = ld.getFloat("paintCategory." + cat.id() + ".g", cat.defaultG());
@@ -188,8 +193,8 @@ public final class GridConfig {
             settlementOutlineThickness = ld.getInt("settlementOutlineThickness", settlementOutlineThickness);
             settlementFillAlpha = ld.getFloat("settlementFillAlpha", settlementFillAlpha);
 
-            settlementAnchorTx = ld.getInt("settlementAnchorTx", settlementAnchorTx);
-            settlementAnchorTy = ld.getInt("settlementAnchorTy", settlementAnchorTy);
+            settlementFlagTx = ld.getInt("settlementFlagTx", settlementFlagTx);
+            settlementFlagTy = ld.getInt("settlementFlagTy", settlementFlagTy);
 
             clamp();
             dirty = false;
@@ -243,7 +248,9 @@ public final class GridConfig {
                 sd.addFloat("paintCategory." + cat.id() + ".a", color.a);
             }
             sd.addSafeString("activePaintCategory", activePaintCategory);
-            sd.addSafeString("paintLayerFilter", paintLayerFilter.id());
+            sd.addSafeString("paintEraseFilter", paintEraseFilter.id());
+            sd.addBoolean("paintEraseOverride", paintEraseOverride);
+            sd.addSafeString("paintSelectionFilter", paintSelectionFilter.id());
 
             sd.addSafeString("selectedBlueprint", selectedBlueprint);
             sd.addSafeString("selectedGlobalBlueprint", selectedGlobalBlueprint);
@@ -265,8 +272,8 @@ public final class GridConfig {
             sd.addInt("settlementOutlineThickness", settlementOutlineThickness);
             sd.addFloat("settlementFillAlpha", settlementFillAlpha);
 
-            sd.addInt("settlementAnchorTx", settlementAnchorTx);
-            sd.addInt("settlementAnchorTy", settlementAnchorTy);
+            sd.addInt("settlementFlagTx", settlementFlagTx);
+            sd.addInt("settlementFlagTy", settlementFlagTy);
 
             sd.saveScript(CONFIG_FILE);
             dirty = false;
@@ -321,8 +328,8 @@ public final class GridConfig {
 
     private static float clamp01(float v) { return v < 0f ? 0f : (v > 1f ? 1f : v); }
 
-    public static boolean hasSettlementAnchor() {
-        return (settlementAnchorTx != 0 || settlementAnchorTy != 0);
+    public static boolean hasSettlementFlag() {
+        return (settlementFlagTx != 0 || settlementFlagTy != 0);
     }
 
     public static int maxTier() {
@@ -347,15 +354,8 @@ public final class GridConfig {
     }
 
     public static void cycleSettlementTier() {
-        int oldSide = currentTierSideTiles();
         settlementTier++;
         if (settlementTier > maxTier()) settlementTier = 1;
-        int newSide = currentTierSideTiles();
-        if (settlementEnabled) {
-            int halfDelta = (newSide - oldSide) / 2;
-            settlementAnchorTx -= halfDelta;
-            settlementAnchorTy -= halfDelta;
-        }
         markDirty(); saveIfDirty();
     }
 
@@ -418,15 +418,47 @@ public final class GridConfig {
         markDirty();
     }
 
-    public static PaintLayerFilter getPaintLayerFilter() {
-        return paintLayerFilter;
+    public static PaintLayerFilter getPaintEraseFilter() {
+        return paintEraseFilter;
     }
 
-    public static void setPaintLayerFilter(PaintLayerFilter filter) {
+    public static void setPaintEraseFilter(PaintLayerFilter filter) {
         if (filter == null) filter = PaintLayerFilter.ALL;
-        if (paintLayerFilter != filter) {
-            paintLayerFilter = filter;
+        if (paintEraseFilter != filter) {
+            paintEraseFilter = filter;
             markDirty();
+        }
+    }
+
+    public static boolean isPaintEraseOverride() {
+        return paintEraseOverride;
+    }
+
+    public static void setPaintEraseOverride(boolean override) {
+        if (paintEraseOverride != override) {
+            paintEraseOverride = override;
+            markDirty();
+        }
+    }
+
+    public static PaintLayerFilter getEffectivePaintEraseFilter() {
+        if (paintEraseOverride) {
+            return paintEraseFilter;
+        }
+        PaintCategory active = getActivePaintCategory();
+        return PaintLayerFilter.forLayer(active.layer());
+    }
+
+    public static PaintLayerFilter getPaintSelectionFilter() {
+        return paintSelectionFilter;
+    }
+
+    public static void setPaintSelectionFilter(PaintLayerFilter filter) {
+        if (filter == null) filter = PaintLayerFilter.ALL;
+        if (paintSelectionFilter != filter) {
+            paintSelectionFilter = filter;
+            markDirty();
+            SelectionState.refreshSelection();
         }
     }
 

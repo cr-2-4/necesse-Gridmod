@@ -33,6 +33,7 @@ import necesse.gfx.forms.components.FormDropdownSelectionButton;
 import necesse.gfx.forms.components.FormInputSize;
 import necesse.gfx.forms.components.FormLabel;
 import necesse.gfx.forms.components.FormSlider;
+import necesse.gfx.forms.components.FormTextInput;
 import necesse.gfx.forms.components.FormTextButton;
 import necesse.gfx.forms.events.FormEventListener;
 import necesse.gfx.forms.events.FormInputEvent;
@@ -58,6 +59,7 @@ public final class PaintQuickPaletteOverlay {
     private static final PanelType[] PANEL_ORDER = new PanelType[]{
             PanelType.PAINT,
             PanelType.BLUEPRINTS,
+            PanelType.GLOBAL_BLUEPRINTS,
             PanelType.GRID,
             PanelType.SETTLEMENT
     };
@@ -80,14 +82,16 @@ public final class PaintQuickPaletteOverlay {
     private static final LayerGroup[] PAINT_LAYER_GROUPS = new LayerGroup[]{
             new LayerGroup("Bottom layer paints", PaintLayer.TERRAIN),
             new LayerGroup("Middle layer paints", PaintLayer.OBJECT),
-            new LayerGroup("Wall layer paints", PaintLayer.WALL),
-            new LayerGroup("Top layer paints", PaintLayer.TABLETOP)
+            new LayerGroup("Wall background paints", PaintLayer.WALL),
+            new LayerGroup("Lighting (wall-mounted)", PaintLayer.WALL_LIGHTING),
+            new LayerGroup("Wall attachments", PaintLayer.WALL_ATTACHMENT),
+            new LayerGroup("Top layer paints (table decor)", PaintLayer.TABLETOP)
     };
 
     private static final IdentityHashMap<Object, PanelsHost> HOSTS = new IdentityHashMap<>();
     private static boolean buttonClickedThisTick;
 
-    private enum PanelType { PAINT, BLUEPRINTS, GRID, SETTLEMENT }
+    private enum PanelType { PAINT, BLUEPRINTS, GLOBAL_BLUEPRINTS, GRID, SETTLEMENT }
 
     public static void tick(boolean paintEnabled) {
         buttonClickedThisTick = false;
@@ -151,11 +155,13 @@ public final class PaintQuickPaletteOverlay {
         void tick(boolean paintEnabled) {
             boolean showPaint = paintEnabled;
             boolean showBlueprints = paintEnabled;
+            boolean showGlobalBlueprints = GridConfig.gridEnabled;
             boolean showSettlement = paintEnabled;
             boolean showGrid = GridConfig.gridEnabled;
 
             updatePanel(PanelType.PAINT, showPaint);
             updatePanel(PanelType.BLUEPRINTS, showBlueprints);
+            updatePanel(PanelType.GLOBAL_BLUEPRINTS, showGlobalBlueprints);
             updatePanel(PanelType.SETTLEMENT, showSettlement);
             updatePanel(PanelType.GRID, showGrid);
 
@@ -193,6 +199,7 @@ public final class PaintQuickPaletteOverlay {
             switch (type) {
                 case GRID: return new GridPanel();
                 case BLUEPRINTS: return new BlueprintPanel();
+                case GLOBAL_BLUEPRINTS: return new GlobalBlueprintPanel();
                 case SETTLEMENT: return new SettlementPanel();
                 case PAINT:
                 default: return new PaintPanel();
@@ -293,6 +300,7 @@ public final class PaintQuickPaletteOverlay {
         private FormContentBox listBox;
         private FormCheckBox hoverMaster;
         private FormCheckBox paintToggle;
+        private FormCheckBox eraseManualCheck;
         private FormDropdownSelectionButton<String> layerFilterDropdown;
         private List<CategoryRow> rows;
 
@@ -311,20 +319,29 @@ public final class PaintQuickPaletteOverlay {
             hoverMaster.onClicked(e -> GridConfig.setHoverLabelsEnabled(hoverMaster.checked));
             rows = new ArrayList<>();
             y += 18;
-            listBox.addComponent(new FormLabel("Erase/select layer", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
+            listBox.addComponent(new FormLabel("Erase by layer", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
             y += 18;
             layerFilterDropdown = listBox.addComponent(new FormDropdownSelectionButton<>(12, y, FormInputSize.SIZE_24, ButtonColor.BASE, PANEL_WIDTH - 40));
             for (PaintLayerFilter filter : PaintLayerFilter.values()) {
                 layerFilterDropdown.options.add(filter.id(), new StaticMessage(filter.label()));
             }
-            PaintLayerFilter activeFilter = GridConfig.getPaintLayerFilter();
-            layerFilterDropdown.setSelected(activeFilter.id(), new StaticMessage(activeFilter.label()));
             layerFilterDropdown.onSelected(e -> {
-                GridConfig.setPaintLayerFilter(PaintLayerFilter.byId(e.value));
-                SelectionState.refreshSelection();
+                if (!GridConfig.isPaintEraseOverride()) {
+                    refreshEraseControls();
+                    return;
+                }
+                GridConfig.setPaintEraseFilter(PaintLayerFilter.byId(e.value));
                 GridConfig.saveIfDirty();
             });
             y += FormInputSize.SIZE_24.height + 12;
+
+            eraseManualCheck = listBox.addComponent(new FormCheckBox("Select erase layer manually", 12, y, GridConfig.isPaintEraseOverride()));
+            eraseManualCheck.onClicked(e -> {
+                GridConfig.setPaintEraseOverride(eraseManualCheck.checked);
+                GridConfig.saveIfDirty();
+                refreshEraseControls();
+            });
+            y += 28;
             for (LayerGroup group : PAINT_LAYER_GROUPS) {
                 addTo(listBox, new FormLabel(group.title, new FontOptions(13), FormLabel.ALIGN_LEFT, 12, y));
                 y += 20;
@@ -335,6 +352,7 @@ public final class PaintQuickPaletteOverlay {
                 }
                 y += 10;
             }
+            refreshEraseControls();
             listBox.setContentBox(new Rectangle(0, 0, PANEL_WIDTH, Math.max(y + 12, listBox.getHeight())));
         }
 
@@ -342,12 +360,20 @@ public final class PaintQuickPaletteOverlay {
         protected void refreshContent() {
             if (paintToggle != null) paintToggle.checked = PaintState.enabled;
             hoverMaster.checked = GridConfig.isHoverLabelsEnabled();
-            if (layerFilterDropdown != null) {
-                PaintLayerFilter filter = GridConfig.getPaintLayerFilter();
-                layerFilterDropdown.setSelected(filter.id(), new StaticMessage(filter.label()));
-            }
+            refreshEraseControls();
             PaintCategory active = GridConfig.getActivePaintCategory();
             for (CategoryRow row : rows) row.sync(active, hoverMaster.checked);
+        }
+
+        private void refreshEraseControls() {
+            if (layerFilterDropdown == null) return;
+            boolean manual = GridConfig.isPaintEraseOverride();
+            if (eraseManualCheck != null) eraseManualCheck.checked = manual;
+            layerFilterDropdown.setActive(manual);
+            PaintLayerFilter display = manual
+                    ? GridConfig.getPaintEraseFilter()
+                    : GridConfig.getEffectivePaintEraseFilter();
+            layerFilterDropdown.setSelected(display.id(), new StaticMessage(display.label()));
         }
 
         private class CategoryRow {
@@ -397,9 +423,10 @@ public final class PaintQuickPaletteOverlay {
         private FormCheckBox chunkToggle;
         private FormCheckBox subChunkToggle;
         private FormSlider gridAlpha;
-        private FormSlider chunkSpan;
+        private FormDropdownSelectionButton<String> chunkSpanDropdown;
+        private FormSlider chunkThickness;
         private FormSlider chunkAlpha;
-        private FormSlider subChunkSpan;
+        private FormSlider subThickness;
         private FormSlider subAlpha;
         private boolean internal;
 
@@ -420,24 +447,47 @@ public final class PaintQuickPaletteOverlay {
             chunkToggle = content.addComponent(new FormCheckBox("Chunk lines", 12, y, GridConfig.showChunkLines));
             chunkToggle.onClicked(e -> toggleChunks(chunkToggle.checked));
             y += 28;
-            chunkSpan = content.addComponent(new FormSlider("Chunk span", 12, y, GridConfig.chunkSpanTiles, 8, 64, sliderW));
-            chunkSpan.drawValue = true;
-            chunkSpan.drawValueInPercent = false;
-            chunkSpan.onChanged(e -> updateChunkSpan());
-            y += FormInputSize.SIZE_24.height + 12;
+            content.addComponent(new FormLabel("Chunk span", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
+            chunkSpanDropdown = content.addComponent(new FormDropdownSelectionButton<>(12, y + 18, FormInputSize.SIZE_24, ButtonColor.BASE, sliderW));
+            int[] spans = new int[]{8, 16, 32, 64};
+            for (int span : spans) {
+                String key = Integer.toString(span);
+                chunkSpanDropdown.options.add(key, new StaticMessage(span + " tiles"));
+            }
+            setChunkSpanSelection();
+            chunkSpanDropdown.onSelected(e -> {
+                int span = Integer.parseInt(e.value);
+                GridConfig.chunkSpanTiles = span;
+                GridConfig.subChunkSpanTiles = Math.max(2, span / 4);
+                GridConfig.markDirty(); GridConfig.saveIfDirty();
+            });
+            y += FormInputSize.SIZE_24.height + 28;
+            chunkThickness = content.addComponent(new FormSlider("Chunk thickness", 12, y, GridConfig.chunkThickness, 1, 4, sliderW));
+            chunkThickness.drawValue = true;
+            chunkThickness.drawValueInPercent = false;
+            chunkThickness.onChanged(e -> {
+                GridConfig.chunkThickness = ((FormSlider)e.from).getValue();
+                GridConfig.markDirty(); GridConfig.saveIfDirty();
+            });
+            y += chunkThickness.getTotalHeight() + 12;
             chunkAlpha = content.addComponent(new FormSlider("Chunk alpha", 12, y, Math.round(GridConfig.chunkAlpha * 100), 0, 100, sliderW));
             chunkAlpha.onChanged(e -> updateAlpha("chunk"));
             y += FormInputSize.SIZE_24.height + 12;
             subChunkToggle = content.addComponent(new FormCheckBox("Sub-chunk lines", 12, y, GridConfig.showSubChunkLines));
             subChunkToggle.onClicked(e -> toggleSubChunks(subChunkToggle.checked));
             y += 28;
-            subChunkSpan = content.addComponent(new FormSlider("Sub-chunk span", 12, y, GridConfig.subChunkSpanTiles, 4, 32, sliderW));
-            subChunkSpan.drawValue = true;
-            subChunkSpan.drawValueInPercent = false;
-            subChunkSpan.onChanged(e -> updateSubChunkSpan());
-            y += FormInputSize.SIZE_24.height + 12;
+            subThickness = content.addComponent(new FormSlider("Sub-chunk thickness", 12, y, GridConfig.subChunkThickness, 1, 3, sliderW));
+            subThickness.drawValue = true;
+            subThickness.drawValueInPercent = false;
+            subThickness.onChanged(e -> {
+                GridConfig.subChunkThickness = ((FormSlider)e.from).getValue();
+                GridConfig.markDirty(); GridConfig.saveIfDirty();
+            });
+            y += subThickness.getTotalHeight() + 12;
             subAlpha = content.addComponent(new FormSlider("Sub-chunk alpha", 12, y, Math.round(GridConfig.subChunkAlpha * 100), 0, 100, sliderW));
             subAlpha.onChanged(e -> updateAlpha("sub"));
+            int totalHeight = y + subAlpha.getTotalHeight() + 12;
+            content.setContentBox(new Rectangle(0, 0, PANEL_WIDTH, Math.max(totalHeight, content.getHeight())));
         }
 
         private void updateAlpha(String type) {
@@ -469,43 +519,35 @@ public final class PaintQuickPaletteOverlay {
             GridConfig.saveIfDirty();
         }
 
-        private void updateChunkSpan() {
-            int value = chunkSpan.getValue();
-            if (GridConfig.chunkSpanTiles == value) return;
-            GridConfig.chunkSpanTiles = value;
-            GridConfig.markDirty();
-            GridConfig.saveIfDirty();
-        }
-
-        private void updateSubChunkSpan() {
-            int value = subChunkSpan.getValue();
-            if (GridConfig.subChunkSpanTiles == value) return;
-            GridConfig.subChunkSpanTiles = value;
-            GridConfig.markDirty();
-            GridConfig.saveIfDirty();
-        }
-
         @Override
         protected void refreshContent() {
             internal = true;
             if (gridToggle != null) gridToggle.checked = GridConfig.gridEnabled;
             gridAlpha.setValue(Math.round(GridConfig.lineAlpha * 100));
             if (chunkToggle != null) chunkToggle.checked = GridConfig.showChunkLines;
-            chunkSpan.setValue(GridConfig.chunkSpanTiles);
+            setChunkSpanSelection();
+            chunkThickness.setValue(GridConfig.chunkThickness);
             chunkAlpha.setValue(Math.round(GridConfig.chunkAlpha * 100));
             if (subChunkToggle != null) subChunkToggle.checked = GridConfig.showSubChunkLines;
-            subChunkSpan.setValue(GridConfig.subChunkSpanTiles);
+            subThickness.setValue(GridConfig.subChunkThickness);
             subAlpha.setValue(Math.round(GridConfig.subChunkAlpha * 100));
             internal = false;
+        }
+
+        private void setChunkSpanSelection() {
+            if (chunkSpanDropdown == null) return;
+            String key = Integer.toString(GridConfig.chunkSpanTiles);
+            chunkSpanDropdown.setSelected(key, new StaticMessage(key + " tiles"));
         }
     }
 
     private static final class SettlementPanel extends SidePanelForm {
         private FormLabel info;
         private FormCheckBox boundsToggle;
+        private FormDropdownSelectionButton<String> tierDropdown;
 
         SettlementPanel() {
-            super("Settlement", "Settlement bounds", 180);
+            super("Settlement", "Settlement bounds", 240);
         }
 
         @Override
@@ -519,10 +561,25 @@ public final class PaintQuickPaletteOverlay {
             y += 26;
             info = content.addComponent(new FormLabel("", new FontOptions(14), FormLabel.ALIGN_LEFT, 12, y));
             y += 30;
-            FormTextButton place = content.addComponent(new FormTextButton("Place here", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
+
+            content.addComponent(new FormLabel("Tier", new FontOptions(14), FormLabel.ALIGN_LEFT, 12, y));
+            y += 20;
+            tierDropdown = content.addComponent(new FormDropdownSelectionButton<>(12, y, FormInputSize.SIZE_24, ButtonColor.BASE, PANEL_WIDTH - 24));
+            populateTierDropdown();
+            tierDropdown.onSelected(e -> {
+                try {
+                    int wanted = Integer.parseInt(e.value);
+                    GridConfig.settlementTier = Math.max(1, Math.min(GridConfig.maxTier(), wanted));
+                    GridConfig.markDirty(); GridConfig.saveIfDirty();
+                    refreshContent();
+                } catch (NumberFormatException ignored) {}
+            });
+            y += FormInputSize.SIZE_24.height + 8;
+
+            FormTextButton place = content.addComponent(new FormTextButton("Place at flag", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
             place.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
                 buttonClickedThisTick = true;
-                PaintControls.placeHereAndEnable();
+                PaintControls.placeAtCurrentSettlementFlag();
             });
             y += FormInputSize.SIZE_24.height + 8;
             FormTextButton tierBtn = content.addComponent(new FormTextButton("Cycle tier", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
@@ -538,6 +595,21 @@ public final class PaintQuickPaletteOverlay {
             String status = GridConfig.settlementEnabled ? "ON" : "OFF";
             info.setText("Status " + status + " | Tier " + GridConfig.settlementTier
                     + " | " + GridConfig.currentTierSideTiles() + " tiles");
+            if (tierDropdown != null) {
+                populateTierDropdown();
+                tierDropdown.setSelected(Integer.toString(GridConfig.settlementTier),
+                        new StaticMessage("Tier " + GridConfig.settlementTier));
+            }
+        }
+
+        private void populateTierDropdown() {
+            if (tierDropdown == null) return;
+            tierDropdown.options.clear();
+            int maxTier = GridConfig.maxTier();
+            for (int i = 1; i <= maxTier; i++) {
+                String key = Integer.toString(i);
+                tierDropdown.options.add(key, new StaticMessage("Tier " + i));
+            }
         }
     }
 
@@ -551,6 +623,7 @@ public final class PaintQuickPaletteOverlay {
         private FormTextButton flipBtn;
         private FormTextButton rotateCwBtn;
         private FormTextButton rotateCcwBtn;
+        private FormDropdownSelectionButton<String> selectionLayerDropdown;
 
         BlueprintPanel() {
             super("Blueprints", "Blueprint tools", 360);
@@ -574,11 +647,26 @@ public final class PaintQuickPaletteOverlay {
             y += FormInputSize.SIZE_24.height + 6;
             FormTextButton load = content.addComponent(new FormTextButton("Load", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
             load.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleLoad());
-            y += FormInputSize.SIZE_24.height + 10;
+            y += FormInputSize.SIZE_24.height + 16;
 
             content.addComponent(new FormLabel("Selection mode", new FontOptions(14), FormLabel.ALIGN_LEFT, 12, y));
             y += 22;
             y = buildModeButtons(content, y);
+
+            content.addComponent(new FormLabel("Selection layer", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
+            y += 18;
+            selectionLayerDropdown = content.addComponent(new FormDropdownSelectionButton<>(12, y, FormInputSize.SIZE_24, ButtonColor.BASE, PANEL_WIDTH - 24));
+            for (PaintLayerFilter filter : PaintLayerFilter.values()) {
+                selectionLayerDropdown.options.add(filter.id(), new StaticMessage(filter.label()));
+            }
+            PaintLayerFilter currentSelectionFilter = GridConfig.getPaintSelectionFilter();
+            selectionLayerDropdown.setSelected(currentSelectionFilter.id(), new StaticMessage(currentSelectionFilter.label()));
+            selectionLayerDropdown.onSelected(e -> {
+                GridConfig.setPaintSelectionFilter(PaintLayerFilter.byId(e.value));
+                updateModeButtons();
+                GridConfig.saveIfDirty();
+            });
+            y += FormInputSize.SIZE_24.height + 16;
 
             int controlY = y;
             flipBtn = content.addComponent(new FormTextButton("Flip", 12, controlY, 90, FormInputSize.SIZE_24, ButtonColor.BASE));
@@ -605,8 +693,10 @@ public final class PaintQuickPaletteOverlay {
             y = controlY + FormInputSize.SIZE_24.height + 8;
 
             statusLabel = content.addComponent(new FormLabel("", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
-            y += 18;
+            y += 24;
             selectionLabel = content.addComponent(new FormLabel("", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
+            y += 20;
+            content.setContentBox(new Rectangle(0, 0, PANEL_WIDTH, Math.max(y, content.getHeight())));
             refreshBlueprintOptions();
             updateModeButtons();
         }
@@ -708,7 +798,7 @@ public final class PaintQuickPaletteOverlay {
             if (rotateCwBtn != null) rotateCwBtn.setActive(placementActive);
             if (rotateCcwBtn != null) rotateCcwBtn.setActive(placementActive);
             if (selectionLabel != null) {
-                PaintLayerFilter filter = GridConfig.getPaintLayerFilter();
+                PaintLayerFilter filter = GridConfig.getPaintSelectionFilter();
                 selectionLabel.setText("Mode: " + modeLabel(mode) + " | Layer: " + filter.label());
             }
         }
@@ -716,6 +806,10 @@ public final class PaintQuickPaletteOverlay {
         @Override
         protected void refreshContent() {
             updateModeButtons();
+            if (selectionLayerDropdown != null) {
+                PaintLayerFilter current = GridConfig.getPaintSelectionFilter();
+                selectionLayerDropdown.setSelected(current.id(), new StaticMessage(current.label()));
+            }
         }
 
         private static final class ModeButton {
@@ -725,6 +819,121 @@ public final class PaintQuickPaletteOverlay {
                 this.mode = mode;
                 this.button = button;
             }
+        }
+    }
+
+    private static final class GlobalBlueprintPanel extends SidePanelForm {
+        private FormDropdownSelectionButton<String> dropdown;
+        private FormTextInput nameInput;
+        private FormLabel status;
+
+        GlobalBlueprintPanel() {
+            super("Global BPs", "Global blueprints", 360);
+        }
+
+        @Override
+        protected void buildContent(FormContentBox content) {
+            int dropdownWidth = PANEL_WIDTH - 150;
+            dropdown = content.addComponent(new FormDropdownSelectionButton<>(12, 6, FormInputSize.SIZE_24, ButtonColor.BASE, dropdownWidth));
+            dropdown.onSelected(e -> {
+                nameInput.setText(e.value);
+                GridConfig.selectedGlobalBlueprint = e.value;
+                GridConfig.markDirty();
+            });
+            FormTextButton refresh = content.addComponent(new FormTextButton("Refresh", 24 + dropdownWidth, 6, 100, FormInputSize.SIZE_24, ButtonColor.BASE));
+            refresh.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> refreshOptions());
+
+            int y = 6 + FormInputSize.SIZE_24.height + 10;
+            nameInput = new FormTextInput(12, y, FormInputSize.SIZE_24, PANEL_WIDTH - 24, 40);
+            content.addComponent(nameInput);
+            nameInput.setText("");
+            y += FormInputSize.SIZE_24.height + 10;
+
+            FormTextButton save = content.addComponent(new FormTextButton("Save", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
+            save.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleSave());
+            y += FormInputSize.SIZE_24.height + 6;
+
+            FormTextButton load = content.addComponent(new FormTextButton("Load", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
+            load.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleLoad());
+            y += FormInputSize.SIZE_24.height + 6;
+
+            FormTextButton delete = content.addComponent(new FormTextButton("Delete", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
+            delete.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleDelete());
+            y += FormInputSize.SIZE_24.height + 10;
+
+            status = content.addComponent(new FormLabel("", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
+            y += 18;
+
+            refreshOptions();
+            content.setContentBox(new Rectangle(0, 0, PANEL_WIDTH, Math.max(y + 10, content.getHeight())));
+        }
+
+        private String currentName() {
+            String text = nameInput.getText().trim();
+            if (text.isEmpty()) return null;
+            return text;
+        }
+
+        private void handleSave() {
+            String name = currentName();
+            if (name == null) {
+                status.setText("Enter a name first");
+                return;
+            }
+            PaintBlueprints.saveGlobal(name);
+            GridConfig.selectedGlobalBlueprint = name;
+            GridConfig.markDirty();
+            refreshOptions();
+            status.setText("Saved '" + name + "'");
+        }
+
+        private void handleLoad() {
+            String name = currentName();
+            if (name == null) {
+                status.setText("Enter a name first");
+                return;
+            }
+            int restored = PaintBlueprints.loadGlobal(name);
+            status.setText(restored > 0 ? "Loaded '" + name + "'" : "Nothing loaded");
+        }
+
+        private void handleDelete() {
+            String name = currentName();
+            if (name == null) {
+                status.setText("Enter a name first");
+                return;
+            }
+            if (PaintBlueprints.deleteGlobal(name)) {
+                status.setText("Deleted '" + name + "'");
+                refreshOptions();
+            } else {
+                status.setText("Delete failed");
+            }
+        }
+
+        private void refreshOptions() {
+            dropdown.options.clear();
+            String[] names = PaintBlueprints.listGlobalBlueprints();
+            String selected = GridConfig.selectedGlobalBlueprint;
+            boolean found = false;
+            for (String n : names) {
+                dropdown.options.add(n, new StaticMessage(n));
+                if (n.equals(selected)) found = true;
+            }
+            if (!found && names.length > 0) selected = names[0];
+            if (names.length == 0) {
+                dropdown.options.add("_none", new StaticMessage("(none)"));
+                dropdown.setSelected("_none", new StaticMessage("(none)"));
+                nameInput.setText("");
+                return;
+            }
+            dropdown.setSelected(selected, new StaticMessage(selected));
+            nameInput.setText(selected);
+        }
+
+        @Override
+        protected void refreshContent() {
+            refreshOptions();
         }
     }
 

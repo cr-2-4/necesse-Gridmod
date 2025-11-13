@@ -23,15 +23,6 @@ final class GridTab {
     private FormCheckBox gridEnableCheck;
     private FormSlider   uiOpacitySlider;
     private FormSlider   alphaSlider;
-    private FormCheckBox chunkCheck;
-    private FormSlider   chunkSpanSlider;
-    private FormSlider   chunkThickSlider;
-    private FormSlider   chunkAlphaSlider;
-
-    private FormCheckBox subChunkCheck;
-    private FormSlider   subChunkSpanSlider;
-    private FormSlider   subThickSlider;
-    private FormSlider   subAlphaSlider;
 
     private final Consumer<Float> onUiOpacityChanged;
     private final Runnable openGridColors;
@@ -94,95 +85,6 @@ final class GridTab {
         gy += alphaSlider.getTotalHeight() + 10;
 
         UiParts.finishCard(cardBase, gy);
-        y = cardBase.getY() + cardBase.height + 14;
-
-        // Card 2: Chunk lines
-        UiParts.SectionCard cardChunk = addCard(box, y, innerWidth);
-        gx = CARD_X + CARD_PAD_X;
-        gy = y + CARD_PAD_Y;
-
-        add(box, new FormLabel("Chunk lines", new FontOptions(14), FormLabel.ALIGN_LEFT, gx, gy), gx, gy);
-        gy += LINE - 12;
-
-        chunkCheck = add(box, new FormCheckBox("Show chunk lines", gx, gy, GridConfig.showChunkLines), gx, gy);
-        chunkCheck.onClicked(e -> {
-            GridConfig.showChunkLines = ((FormCheckBox)e.from).checked;
-            GridConfig.markDirty(); GridConfig.saveIfDirty();
-        });
-
-        int sliderWidthChunk = Math.max(180, innerWidth - (CARD_X * 2) - (gx - CARD_X));
-        chunkSpanSlider = add(box, new FormSlider("Chunk span", gx, gy, GridConfig.chunkSpanTiles, 8, 64, sliderWidthChunk), gx, gy);
-        chunkSpanSlider.drawValue = true;
-        chunkSpanSlider.drawValueInPercent = false;
-        chunkSpanSlider.onChanged(e -> {
-            int v = ((FormSlider)e.from).getValue();
-            GridConfig.chunkSpanTiles = v;
-            GridConfig.subChunkSpanTiles = Math.max(2, v / 4);
-            GridConfig.markDirty(); GridConfig.saveIfDirty();
-        });
-        gy += chunkSpanSlider.getTotalHeight() + 6;
-
-        chunkThickSlider = add(box, new FormSlider("Chunk thickness", gx, gy, GridConfig.chunkThickness, 1, 4, sliderWidthChunk), gx, gy);
-        chunkThickSlider.drawValue = true;
-        chunkThickSlider.drawValueInPercent = false;
-        chunkThickSlider.onChanged(e -> {
-            GridConfig.chunkThickness = ((FormSlider)e.from).getValue();
-            GridConfig.markDirty(); GridConfig.saveIfDirty();
-        });
-        gy += chunkThickSlider.getTotalHeight() + 8;
-
-        chunkAlphaSlider = add(box, new FormSlider("Chunk alpha", gx, gy, Math.round(GridConfig.chunkAlpha * 100f), 0, 100, sliderWidthChunk), gx, gy);
-        chunkAlphaSlider.onChanged(e -> {
-            GridConfig.chunkAlpha = clamp01(((FormSlider)e.from).getValue() / 100f);
-            GridConfig.markDirty(); GridConfig.saveIfDirty();
-        });
-        gy += chunkAlphaSlider.getTotalHeight() + 10;
-
-        UiParts.finishCard(cardChunk, gy);
-        y = cardChunk.getY() + cardChunk.height + 14;
-
-        // Card 3: Sub-chunk lines
-        UiParts.SectionCard cardSub = addCard(box, y, innerWidth);
-        gx = CARD_X + CARD_PAD_X;
-        gy = y + CARD_PAD_Y;
-
-        add(box, new FormLabel("Sub-chunk lines", new FontOptions(14), FormLabel.ALIGN_LEFT, gx, gy), gx, gy);
-        gy += LINE - 12;
-
-        subChunkCheck = add(box, new FormCheckBox("Show sub-chunk lines", gx, gy, GridConfig.showSubChunkLines), gx, gy);
-        subChunkCheck.onClicked(e -> {
-            GridConfig.showSubChunkLines = ((FormCheckBox)e.from).checked;
-            GridConfig.markDirty(); GridConfig.saveIfDirty();
-        });
-        gy += LINE;
-
-        int sliderWidthSub = Math.max(180, innerWidth - (CARD_X * 2) - (gx - CARD_X));
-        subChunkSpanSlider = add(box, new FormSlider("Sub-chunk span", gx, gy, GridConfig.subChunkSpanTiles, 4, 32, sliderWidthSub), gx, gy);
-        subChunkSpanSlider.drawValue = true;
-        subChunkSpanSlider.drawValueInPercent = false;
-        subChunkSpanSlider.onChanged(e -> {
-            GridConfig.subChunkSpanTiles = ((FormSlider)e.from).getValue();
-            GridConfig.markDirty(); GridConfig.saveIfDirty();
-        });
-        gy += subChunkSpanSlider.getTotalHeight() + 6;
-
-        subThickSlider = add(box, new FormSlider("Sub-chunk thickness", gx, gy, GridConfig.subChunkThickness, 1, 3, sliderWidthSub), gx, gy);
-        subThickSlider.drawValue = true;
-        subThickSlider.drawValueInPercent = false;
-        subThickSlider.onChanged(e -> {
-            GridConfig.subChunkThickness = ((FormSlider)e.from).getValue();
-            GridConfig.markDirty(); GridConfig.saveIfDirty();
-        });
-        gy += subThickSlider.getTotalHeight() + 8;
-
-        subAlphaSlider = add(box, new FormSlider("Sub-chunk alpha", gx, gy, Math.round(GridConfig.subChunkAlpha * 100f), 0, 100, sliderWidth), gx, gy);
-        subAlphaSlider.onChanged(e -> {
-            GridConfig.subChunkAlpha = clamp01(((FormSlider)e.from).getValue() / 100f);
-            GridConfig.markDirty(); GridConfig.saveIfDirty();
-        });
-        gy += subAlphaSlider.getTotalHeight() + 6;
-
-        UiParts.finishCard(cardSub, gy);
     }
 
     private UiParts.SectionCard addCard(FormContentBox box, int y, int innerWidth) {

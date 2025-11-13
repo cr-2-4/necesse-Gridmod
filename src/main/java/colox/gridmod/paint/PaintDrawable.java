@@ -353,6 +353,10 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                 drawRect(px, py, tileSize, height, r, g, b, finalAlpha);
                 break;
             }
+            case TRIANGLE: {
+                drawTriangle(px, py, tileSize, r, g, b, finalAlpha);
+                break;
+            }
             case QUARTER_CORNER: {
                 int size = Math.max(4, tileSize / 2);
                 int pad = Math.max(2, tileSize / 10);
@@ -368,6 +372,26 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                 drawRect(drawX, drawY, size, size, r, g, b, finalAlpha);
                 break;
             }
+            case PLUS_SIGN: {
+                drawPlus(px, py, tileSize, r, g, b, finalAlpha);
+                break;
+            }
+            case DOOR_ICON: {
+                int frameThickness = Math.max(2, tileSize / 8);
+                int width = Math.max(6, tileSize / 2);
+                int height = tileSize;
+                int startX = px + (tileSize - width) / 2;
+                drawRect(startX, py, frameThickness, height, r, g, b, finalAlpha); // left jamb
+                drawRect(startX + width - frameThickness, py, frameThickness, height, r, g, b, finalAlpha); // right jamb
+                int archHeight = Math.max(4, tileSize / 4);
+                drawRect(startX, py, width, frameThickness, r, g, b, finalAlpha); // header
+                int doorWidth = width - frameThickness * 2;
+                int doorHeight = height - archHeight - frameThickness;
+                int doorX = startX + frameThickness;
+                int doorY = py + archHeight;
+                drawRect(doorX, doorY, doorWidth, doorHeight, r, g, b, finalAlpha * 0.6f);
+                break;
+            }
             default:
                 drawRect(px, py, tileSize, tileSize, r, g, b, finalAlpha);
         }
@@ -379,6 +403,36 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                 .pos(x, y, false)
                 .color(r, g, b, a)
                 .draw();
+    }
+
+    private void drawPlus(int px, int py, int tileSize, float r, float g, float b, float a) {
+        int thickness = Math.max(2, tileSize / 5);
+        int usable = tileSize - thickness * 2;
+        int centerX = px + tileSize / 2;
+        int centerY = py + tileSize / 2;
+
+        int verticalX = centerX - thickness / 2;
+        int verticalY = py + (tileSize - usable) / 2;
+        drawRect(verticalX, verticalY, thickness, usable, r, g, b, a);
+
+        int horizontalX = px + (tileSize - usable) / 2;
+        int horizontalY = centerY - thickness / 2;
+        drawRect(horizontalX, horizontalY, usable, thickness, r, g, b, a);
+    }
+
+    private void drawTriangle(int px, int py, int tileSize, float r, float g, float b, float a) {
+        int triHeight = Math.max(4, tileSize / 2);
+        int baseY = py + tileSize - 1;
+        for (int row = 0; row < triHeight; row++) {
+            int width = tileSize - (row * tileSize / triHeight);
+            int startX = px + (tileSize - width) / 2;
+            int y = baseY - row;
+            GameResources.empty.initDraw()
+                    .size(Math.max(1, width), 1)
+                    .pos(startX, y, false)
+                    .color(r, g, b, a)
+                    .draw();
+        }
     }
 
     private static float clamp01(float value) {

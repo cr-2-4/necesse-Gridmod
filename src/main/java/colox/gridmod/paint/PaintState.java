@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Comparator;
 
 import colox.gridmod.util.ConfigPaths;
-import colox.gridmod.paint.PaintLayerFilter;
 import necesse.engine.save.LoadData;
 import necesse.engine.save.SaveData;
 

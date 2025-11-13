@@ -179,7 +179,7 @@ public final class SelectionState {
 
         // Build quick lookup of painted tiles
         HashSet<Long> painted = new HashSet<>();
-        PaintLayerFilter filter = GridConfig.getPaintLayerFilter();
+        PaintLayerFilter filter = GridConfig.getPaintSelectionFilter();
         for (PaintState.PaintEntry p : PaintState.iterateSnapshot()) {
             if (!filter.matches(p.layer)) continue;
             painted.add(key(p.x, p.y));

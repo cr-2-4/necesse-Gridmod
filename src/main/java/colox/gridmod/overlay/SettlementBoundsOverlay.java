@@ -1,11 +1,14 @@
 package colox.gridmod.overlay;
 
+import java.awt.Rectangle;
+
 import colox.gridmod.config.GridConfig;
 import necesse.engine.gameLoop.tickManager.TickManager;
 import necesse.gfx.GameResources;
 import necesse.gfx.camera.GameCamera;
 import necesse.gfx.drawables.Drawable;
 import necesse.level.maps.Level;
+import necesse.level.maps.levelData.settlementData.SettlementBoundsManager;
 
 public class SettlementBoundsOverlay implements Drawable {
 
@@ -30,12 +33,11 @@ public class SettlementBoundsOverlay implements Drawable {
         final int camW = camera.getWidth();
         final int camH = camera.getHeight();
 
-        // Size: use tier → chunks → tiles
-        final int sideTiles = GridConfig.currentTierSideTiles();
-
-        // Origin: already stored as TOP-LEFT in tiles
-        final int ox = GridConfig.settlementAnchorTx;
-        final int oy = GridConfig.settlementAnchorTy;
+        Rectangle tileRect = getSettlementTileRectangle();
+        if (tileRect == null) return;
+        final int sideTiles = tileRect.width;
+        final int ox = tileRect.x;
+        final int oy = tileRect.y;
 
         // Convert to pixel rect relative to camera
         final int px = ox * tilePx - camX;
@@ -74,6 +76,18 @@ public class SettlementBoundsOverlay implements Drawable {
             // right
             GameResources.empty.initDraw().size(thick, Math.max(1, ph)).pos(px + pw - thick, py, false).color(r, g, b, oa).draw();
         }
+    }
+
+    private Rectangle getSettlementTileRectangle() {
+        if (!GridConfig.hasSettlementFlag()) return null;
+        if ("builtin".equalsIgnoreCase(GridConfig.settlementMode)) {
+            int tier = Math.max(1, Math.min(GridConfig.maxTier(), GridConfig.settlementTier));
+            int flagTier = Math.max(0, Math.min(SettlementBoundsManager.flagTiers.length - 1, tier - 1));
+            return SettlementBoundsManager.getTileRectangleFromTier(GridConfig.settlementFlagTx, GridConfig.settlementFlagTy, flagTier);
+        }
+        int sideTiles = GridConfig.currentTierSideTiles();
+        int half = sideTiles / 2;
+        return new Rectangle(GridConfig.settlementFlagTx - half, GridConfig.settlementFlagTy - half, sideTiles, sideTiles);
     }
 
     private static float clamp01(float v) {

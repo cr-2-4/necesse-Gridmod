@@ -10,9 +10,12 @@ import necesse.engine.input.InputPosition;
 import necesse.engine.state.State;
 import necesse.engine.window.GameWindow;
 import necesse.engine.window.WindowManager;
+import necesse.engine.world.worldData.SettlementsWorldData;
+import necesse.entity.mobs.PlayerMob;
 import necesse.gfx.camera.GameCamera;
 import necesse.gfx.forms.FormManager;
 import necesse.level.maps.Level;
+import necesse.level.maps.levelData.settlementData.NetworkSettlementData;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -22,14 +25,25 @@ public final class PaintControls {
 
     // After stamping a blueprint, block normal brush painting until LMB goes up
     private static boolean suppressPaintUntilLmbUp = false;
+    private static Level currentLevel;
+    private static PlayerMob currentPlayer;
 
     private static String currentBlueprintName() {
         String n = colox.gridmod.config.GridConfig.selectedBlueprint;
         return (n == null || n.isBlank()) ? "quick" : n.trim();
     }
 
-    public static void tick(Level level, GameCamera camera) {
+    public static void tick(Level level, GameCamera camera, PlayerMob player) {
         PaintQuickPaletteOverlay.tick(PaintState.enabled);
+
+        currentLevel = level;
+        currentPlayer = player;
+
+        // Always sync mouse camera so UI buttons mirror keybind behavior
+        if (camera != null) {
+            MouseTileUtil.setCamera(camera);
+        }
+
         // UI-safe: If Grid UI is open, ignore all input (paint/placement/selection)
         if (GridUI.isOpen()) return;
 
@@ -44,8 +58,7 @@ public final class PaintControls {
             return;
         }
 
-        // Sync camera for mouse->tile conversion
-        MouseTileUtil.setCamera(camera);
+        // (Camera already synced above)
         Input input = WindowManager.getWindow().getInput();
 
         // ===== Settlement overlay keys (chunk-based) =====
@@ -155,7 +168,7 @@ public final class PaintControls {
         if (anyHeld && tile != null) {
             boolean doErase = rightHeld || eraseModHeld;
             String catId = GridConfig.getActivePaintCategory().id();
-            Painter.applyAt(tile[0], tile[1], doErase, catId, GridConfig.getPaintLayerFilter());
+            Painter.applyAt(tile[0], tile[1], doErase, catId, GridConfig.getEffectivePaintEraseFilter());
         }
 
         PaintState.saveIfDirty();
@@ -206,15 +219,7 @@ public final class PaintControls {
                 ty = Math.max(0, py / GridConfig.tileSize);
             }
 
-            int chunkOriginTx = Math.floorDiv(tx, 16) * 16;
-            int chunkOriginTy = Math.floorDiv(ty, 16) * 16;
-
-            int sideTiles = GridConfig.currentTierSideTiles();
-            int centerTx = chunkOriginTx + 8;
-            int centerTy = chunkOriginTy + 8;
-
-            GridConfig.settlementAnchorTx = centerTx - (sideTiles / 2);
-            GridConfig.settlementAnchorTy = centerTy - (sideTiles / 2);
+            updateSettlementFlagFromTile(tx, ty);
 
             GridConfig.markDirty();
             GridConfig.saveIfDirty();
@@ -231,11 +236,31 @@ public final class PaintControls {
 
     public static void placeHereAndEnable() {
         placeHere();
+        enableSettlementAtFlag();
+    }
+
+    public static void placeAtStoredFlagAndEnable() {
+        if (!GridConfig.hasSettlementFlag()) {
+            System.out.println("[GridMod] Cannot place settlement: no flag location stored. Use the keybind to set it.");
+            return;
+        }
+        enableSettlementAtFlag();
+    }
+
+    public static void placeAtCurrentSettlementFlag() {
+        if (!syncFlagFromCurrentSettlement()) {
+            System.out.println("[GridMod] Could not find a settlement flag here. Stand inside a settlement and try again.");
+            return;
+        }
+        enableSettlementAtFlag();
+    }
+
+    private static void enableSettlementAtFlag() {
         GridConfig.settlementEnabled = true;
         GridConfig.markDirty();
         GridConfig.saveIfDirty();
-        System.out.println("[GridMod] Settlement placed+enabled via UI at topLeft=("
-                + GridConfig.settlementAnchorTx + "," + GridConfig.settlementAnchorTy + ")");
+        System.out.println("[GridMod] Settlement placed+enabled at flagTile=("
+                + GridConfig.settlementFlagTx + "," + GridConfig.settlementFlagTy + ")");
     }
 
     private static void handleSettlementKeys(Input input) {
@@ -250,13 +275,13 @@ public final class PaintControls {
             boolean prev = GridConfig.settlementEnabled;
             boolean next = !prev;
             GridConfig.settlementEnabled = next;
-            if (next && !GridConfig.hasSettlementAnchor()) {
+            if (next && !GridConfig.hasSettlementFlag()) {
                 placeHere();
             }
             GridConfig.markDirty();
             GridConfig.saveIfDirty();
             System.out.println("[GridMod] Settlement overlay = " + GridConfig.settlementEnabled
-                    + " anchorTopLeft=(" + GridConfig.settlementAnchorTx + "," + GridConfig.settlementAnchorTy + ")");
+                    + " flagTile=(" + GridConfig.settlementFlagTx + "," + GridConfig.settlementFlagTy + ")");
         }
 
         if (colox.gridmod.input.GridKeybinds.SETTLEMENT_TIER_CYCLE != null
@@ -294,10 +319,34 @@ public final class PaintControls {
         }
     }
 
+    private static boolean syncFlagFromCurrentSettlement() {
+        Level level = currentLevel;
+        PlayerMob player = currentPlayer;
+        if (level == null || player == null) return false;
+        SettlementsWorldData data = SettlementsWorldData.getSettlementsData(level);
+        if (data == null) return false;
+        NetworkSettlementData settlement = data.getNetworkDataAtTile(level.getIdentifier(), player.getTileX(), player.getTileY());
+        if (settlement == null) return false;
+
+        GridConfig.settlementMode = "builtin";
+        GridConfig.settlementFlagTx = settlement.getTileX();
+        GridConfig.settlementFlagTy = settlement.getTileY();
+        GridConfig.settlementTier = Math.max(1, Math.min(GridConfig.maxTier(), settlement.getFlagTier() + 1));
+        GridConfig.markDirty();
+        GridConfig.saveIfDirty();
+        return true;
+    }
+
     private static boolean safeIsRightHeld(Input input) {
         try { if (input.isKeyDown(-99)) return true; } catch (Throwable ignored) {}
         try { if (input.isPressed(-99)) return true; } catch (Throwable ignored) {}
         return false;
+    }
+
+    /** Remember the tile where the flag should go so the overlay always follows the true placement point. */
+    private static void updateSettlementFlagFromTile(int tileX, int tileY) {
+        GridConfig.settlementFlagTx = tileX;
+        GridConfig.settlementFlagTy = tileY;
     }
 
     private static FormManager getCurrentFormManager() {
