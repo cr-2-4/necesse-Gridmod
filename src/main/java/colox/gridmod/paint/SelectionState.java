@@ -53,6 +53,9 @@ public final class SelectionState {
         if (m == null) m = Mode.NONE;
         mode = m;
         clear();
+        if (mode == Mode.ALL) {
+            refreshSelection();
+        }
     }
 
     public static boolean isActive() { return mode != Mode.NONE; }

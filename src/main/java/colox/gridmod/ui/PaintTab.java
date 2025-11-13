@@ -97,9 +97,7 @@ public class PaintTab {
 
     // Relative Blueprints
     private FormDropdownSelectionButton<String> bpDropdown;
-    private FormTextButton bpNewBtn, bpSaveBtn, bpLoadBtn, bpRefreshBtn, bpDeleteBtn;
-    private FormTextInput renameInput;
-    private FormTextButton renameApplyBtn;
+    private FormTextButton bpSaveBtn, bpLoadBtn, bpRefreshBtn;
     private FormLabel bpInlineStatus;
 
     // Transform + state
@@ -109,8 +107,7 @@ public class PaintTab {
     // Selection
     private FormDropdownSelectionButton<String> selModeDropdown;
     private FormLabel selCountLabel;
-    private FormTextInput selSaveNameInput;
-    private FormTextButton selSaveBtn, selClearBtn;
+    private FormTextButton selClearBtn;
 
     // Global Blueprints
     private FormDropdownSelectionButton<String> gbpDropdown;
@@ -269,36 +266,22 @@ public class PaintTab {
         pY += 18; // small gap below the status line
 
         int rowY = pY;
-        int bw   = 78;
+        int bw   = 90;
         int gap  = 6;
 
-        // full width for controls now (no status at this y)
-        int dropdownWidth = Math.max(160, usableRow - (gap + 5 * bw));
+        int dropdownWidth = Math.max(200, usableRow - (gap + 3 * bw));
 
         bpDropdown = add(new FormDropdownSelectionButton<>(px, rowY, FormInputSize.SIZE_24, ButtonColor.BASE, dropdownWidth), px, rowY);
 
         int bx = px + dropdownWidth + gap;
-        bpNewBtn     = add(new FormTextButton("New",     bx,                 rowY, bw, FormInputSize.SIZE_24, ButtonColor.BASE), bx, rowY);
-        bpSaveBtn    = add(new FormTextButton("Save",    bx + bw + 3,        rowY, bw, FormInputSize.SIZE_24, ButtonColor.BASE), bx + bw + 3, rowY);
-        bpLoadBtn    = add(new FormTextButton("Load",    bx + 2*bw + 6,      rowY, bw, FormInputSize.SIZE_24, ButtonColor.BASE), bx + 2*bw + 6, rowY);
-        bpRefreshBtn = add(new FormTextButton("Refresh", bx + 3*bw + 9,      rowY, bw, FormInputSize.SIZE_24, ButtonColor.BASE), bx + 3*bw + 9, rowY);
-        bpDeleteBtn  = add(new FormTextButton("Delete",  bx + 4*bw + 12,     rowY, bw, FormInputSize.SIZE_24, ButtonColor.BASE), bx + 4*bw + 12, rowY);
+        bpSaveBtn    = add(new FormTextButton("Save",    bx,                 rowY, bw, FormInputSize.SIZE_24, ButtonColor.BASE), bx, rowY);
+        bpLoadBtn    = add(new FormTextButton("Load",    bx + bw + gap,      rowY, bw, FormInputSize.SIZE_24, ButtonColor.BASE), bx + bw + gap, rowY);
+        bpRefreshBtn = add(new FormTextButton("Refresh", bx + 2*(bw + gap),  rowY, bw, FormInputSize.SIZE_24, ButtonColor.BASE), bx + 2*(bw + gap), rowY);
 
         bpDropdown.onSelected(e -> {
             GridConfig.selectedBlueprint = e.value;
             GridConfig.markDirty();
             GridConfig.saveIfDirty();
-            renameInput.setText(currentBP());
-        });
-
-        bpNewBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
-            String newName = proposeNewName();
-            boolean created = PaintBlueprints.createEmpty(newName);
-            GridConfig.selectedBlueprint = newName;
-            GridConfig.markDirty(); GridConfig.saveIfDirty();
-            refreshBlueprints();
-            renameInput.setText(newName);
-            setBpStatus(created ? ("Created \"" + newName + "\"") : ("Selected \"" + newName + "\""));
         });
 
         bpSaveBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
@@ -340,40 +323,8 @@ public class PaintTab {
             setBpStatus("Refreshed list");
         });
 
-        bpDeleteBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
-            String name = currentBP();
-            if (name.isBlank()) return;
-            boolean ok = PaintBlueprints.deleteBlueprint(name);
-            if (ok) {
-                GridConfig.selectedBlueprint = "quick";
-                GridConfig.markDirty(); GridConfig.saveIfDirty();
-                refreshBlueprints();
-                renameInput.setText(currentBP());
-                setBpStatus("Deleted \"" + name + "\"");
-            } else {
-                setBpStatus("Delete failed");
-            }
-            updateTransformButtonsActive();
-        });
-
-        // Rename row (relative)
-        int renameY = rowY + LINE + 8;
-        add(new FormLabel("Rename to:", new FontOptions(14), FormLabel.ALIGN_LEFT, M, renameY + 6), M, renameY + 6);
-
-        int riX = px + 110;
-        int riW = 280;
-        renameInput = add(new FormTextInput(riX, renameY, FormInputSize.SIZE_24, riW, 40), riX, renameY);
-        renameInput.placeHolder = new StaticMessage("new name");
-        renameInput.rightClickToClear = true;
-        renameInput.rightClickToClearTooltip = new StaticMessage("Clear");
-        renameInput.onSubmit((FormEventListener<FormInputEvent<FormTextInput>>) e -> applyRename());
-
-        renameApplyBtn = add(new FormTextButton("Apply", riX + riW + 8, renameY, 90, FormInputSize.SIZE_24, ButtonColor.BASE),
-                             riX + riW + 8, renameY);
-        renameApplyBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> applyRename());
-
         // Transform buttons row
-        int tRowY = renameY + LINE + 8;
+        int tRowY = rowY + LINE + 8;
         rotateCwBtn  = add(new FormTextButton("Rotate CW",  px,                tRowY, 110, FormInputSize.SIZE_24, ButtonColor.BASE), px,                tRowY);
         rotateCcwBtn = add(new FormTextButton("Rotate CCW", px + 116,          tRowY, 110, FormInputSize.SIZE_24, ButtonColor.BASE), px + 116,          tRowY);
         flipBtn      = add(new FormTextButton("Flip",       px + 116 + 116,    tRowY, 80,  FormInputSize.SIZE_24, ButtonColor.BASE), px + 232,          tRowY);
@@ -450,30 +401,6 @@ public class PaintTab {
 
         SelectionState.setChangeListener(this::updateSelCountLabel);
         updateSelCountLabel();
-
-        add(new FormLabel("Save Selection As:", new FontOptions(14), FormLabel.ALIGN_LEFT, px, pY + 6), px, pY + 6);
-        selSaveNameInput = add(new FormTextInput(px + 160, pY, FormInputSize.SIZE_24, 260, 40), px + 160, pY);
-        selSaveNameInput.placeHolder = new StaticMessage("bp_selection");
-        selSaveNameInput.rightClickToClear = true;
-        selSaveNameInput.rightClickToClearTooltip = new StaticMessage("Clear");
-
-        selSaveBtn = add(new FormTextButton("Save", px + 160 + 260 + 8, pY, 90, FormInputSize.SIZE_24, ButtonColor.BASE), px + 428, pY);
-        selSaveBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
-            String raw = selSaveNameInput.getText();
-            String name = (raw == null) ? "" : raw.trim();
-            if (name.isEmpty()) {
-                setBpStatus("Enter a name for the selection.");
-                return;
-            }
-            int n = SelectionState.getSelectedCount();
-            if (n <= 0) {
-                setBpStatus("No tiles selected.");
-                return;
-            }
-            int written = PaintBlueprints.saveSelectionAs(name, SelectionState.getSelectedPoints());
-            setBpStatus(written > 0 ? ("Saved selection \"" + name + "\" (" + written + " cells)") : "Save selection failed");
-            refreshBlueprints();
-        });
 
         // Passive updater
         add(new FormCustomDraw(0, 0, 1, 1) {
@@ -631,7 +558,6 @@ public class PaintTab {
 
         // init data
         refreshBlueprints();
-        renameInput.setText(currentBP());
         refreshGlobalBlueprints();
         gbpRenameInput.setText(currentGlobalBP());
         updateTransformButtonsActive();
@@ -639,29 +565,6 @@ public class PaintTab {
     }
 
     // helpers …
-
-    private void applyRename() {
-        String oldName = currentBP();
-        if (oldName.isBlank()) return;
-
-        String raw = renameInput.getText();
-        if (raw == null) raw = "";
-        String trimmed = raw.trim();
-        if (trimmed.isEmpty()) return;
-        if (trimmed.equals(oldName)) return;
-
-        boolean ok = PaintBlueprints.renameBlueprint(oldName, trimmed);
-        if (ok) {
-            GridConfig.selectedBlueprint = trimmed;
-            GridConfig.markDirty(); GridConfig.saveIfDirty();
-            refreshBlueprints();
-            renameInput.setText(trimmed);
-            setBpStatus("Renamed to \"" + trimmed + "\"");
-        } else {
-            renameInput.setText(oldName);
-            setBpStatus("Rename failed");
-        }
-    }
 
     private void applyGlobalRename() {
         String oldName = currentGlobalBP();
@@ -723,15 +626,6 @@ public class PaintTab {
         return (s == null || s.isBlank()) ? "global_quick" : s;
         }
 
-    private String proposeNewName() {
-        Set<String> existing = new HashSet<>(Arrays.asList(PaintBlueprints.listBlueprints()));
-        for (int i = 1; i <= 9999; i++) {
-            String cand = "bp_" + i;
-            if (!existing.contains(cand)) return cand;
-        }
-        return "bp_new";
-    }
-
     private String proposeNewGlobalName() {
         Set<String> existing = new HashSet<>(Arrays.asList(PaintBlueprints.listGlobalBlueprints()));
         for (int i = 1; i <= 9999; i++) {
@@ -766,7 +660,6 @@ public class PaintTab {
             default:         mode = "None";
         }
         selCountLabel.setText("Mode: " + mode + " - Selected: " + n + " cells");
-        if (selSaveBtn != null) selSaveBtn.setActive(n > 0);
     }
 
     private void updateBrushValueLabel(int size) {
