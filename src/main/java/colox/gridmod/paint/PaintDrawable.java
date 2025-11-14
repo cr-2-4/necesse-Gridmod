@@ -175,19 +175,18 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
 
         // selection highlight (selected cells after release)
         if (SelectionState.getSelectedCount() > 0) {
+            PaintLayerFilter selectionFilter = GridConfig.getPaintSelectionFilter();
             for (long[] p : SelectionState.getSelectedPoints()) {
                 int tx = (int)p[0], ty = (int)p[1];
                 if (tx < startTileX || tx > endTileX || ty < startTileY || ty > endTileY) continue;
                 int px = tx * tileSize - camX;
                 int py = ty * tileSize - camY;
-                String catId = PaintState.getCategory(tx, ty);
-                PaintCategory colorCat = PaintCategory.byId(catId);
-                GridConfig.PaintColor color = GridConfig.getPaintColor(colorCat);
-                GameResources.empty.initDraw()
-                    .size(tileSize, tileSize)
-                    .pos(px, py, false)
-                    .color(color.r, color.g, color.b, color.a)
-                    .draw();
+                List<PaintState.PaintEntry> entries = PaintState.getPaintEntries(tx, ty);
+                for (PaintState.PaintEntry entry : entries) {
+                    if (!selectionFilter.matches(entry.layer)) continue;
+                    PaintCategory cat = PaintCategory.byId(entry.categoryId);
+                    drawSelectionHighlight(px, py, tileSize, cat);
+                }
             }
         }
 
@@ -246,6 +245,17 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         if (!hoverCategories.isEmpty()) {
             drawHoverTooltip(hoverCategories, hoverPx, hoverPy, tileSize, viewW, viewH);
         }
+    }
+
+    private void drawSelectionHighlight(int px, int py, int tileSize, PaintCategory category) {
+        GridConfig.PaintColor base = GridConfig.getPaintColor(category);
+        float hiR = Math.min(1f, base.r + 0.15f);
+        float hiG = Math.min(1f, base.g + 0.15f);
+        float hiB = Math.min(1f, base.b + 0.15f);
+        float hiA = Math.min(1f, base.a + 0.35f);
+        float edgeA = Math.min(1f, hiA + 0.15f) * category.layer().alphaScale();
+        drawPaintMark(px, py, tileSize, category, hiR, hiG, hiB, hiA);
+        drawCellEdges(px, py, tileSize, hiR, hiG, hiB, edgeA);
     }
 
     private void drawHoverCategoryHighlight(List<PaintState.PaintEntry> snapshot,
