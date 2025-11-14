@@ -18,3 +18,5 @@
 16. ~~**Store paint/settlement data per world:** Scope `paint_state.txt`/`grid_settings.txt` to `mods-data/colox.gridmod/worlds/<worldID>/…` so each save keeps its own overlay data.~~
 17. **Blueprint import/export UX:** Add UI buttons to export a user blueprint to a `.gridpaint` file (outside the defaults pack) and to import files dropped into the blueprint directory, so players can trade layouts without touching the filesystem manually.
 18. **Default blueprint badge/filters:** Highlight which blueprint is a packaged default vs. a user save inside placement previews and status text, and optionally allow filtering user lists to defaults-only/user-only views.
+19. **Additive multi-selection workflow:** Support adding more regions to the current selection (for example via a modifier key or “add to selection” mode) so players can select several disjoint areas and treat them as one selection for saving or transforming.
+20. **Move paint cell counter near minimap:** When the minimap is visible, reposition the “Selected/paint cell count” HUD so it sits just under (or beside) the minimap rather than in a fixed corner, keeping it readable without overlapping core UI.

@@ -4,12 +4,9 @@ import java.awt.Rectangle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Set;
 
 import colox.gridmod.config.GridConfig;
 import colox.gridmod.paint.BlueprintPlacement;
@@ -624,6 +621,9 @@ public final class PaintQuickPaletteOverlay {
         private FormLabel selectionLabel;
         private String currentBlueprint;
         private long lastSaveClick;
+        private String lastSaveName;
+        private long lastSaveAsClick;
+        private String lastSaveAsName;
         private List<ModeButton> modeButtons;
         private FormTextButton flipBtn;
         private FormTextButton rotateCwBtn;
@@ -645,10 +645,7 @@ public final class PaintQuickPaletteOverlay {
             y += 18;
             defaultDropdown = content.addComponent(new FormDropdownSelectionButton<>(12, y, FormInputSize.SIZE_24, ButtonColor.BASE, dropdownWidth));
             populateDefaultDropdown();
-            FormTextButton selectDefault = content.addComponent(new FormTextButton("Select", 24 + dropdownWidth, y, PANEL_WIDTH - (36 + dropdownWidth), FormInputSize.SIZE_24, ButtonColor.BASE));
-            selectDefault.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleUseDefault());
-            y += FormInputSize.SIZE_24.height + 6;
-            FormTextButton loadDefault = content.addComponent(new FormTextButton("Load default", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
+            FormTextButton loadDefault = content.addComponent(new FormTextButton("Load default", 24 + dropdownWidth, y, PANEL_WIDTH - (36 + dropdownWidth), FormInputSize.SIZE_24, ButtonColor.BASE));
             loadDefault.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleLoadDefault());
             y += FormInputSize.SIZE_24.height + 12;
 
@@ -665,18 +662,14 @@ public final class PaintQuickPaletteOverlay {
             y += FormInputSize.SIZE_24.height + 10;
 
             int actionWidth = (PANEL_WIDTH - 36) / 2;
-            FormTextButton createBtn = content.addComponent(new FormTextButton("New", 12, y, actionWidth, FormInputSize.SIZE_24, ButtonColor.BASE));
-            createBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleNew());
+            FormTextButton loadBtn = content.addComponent(new FormTextButton("Load", 12, y, actionWidth, FormInputSize.SIZE_24, ButtonColor.BASE));
+            loadBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleLoad());
             FormTextButton deleteBtn = content.addComponent(new FormTextButton("Delete", 24 + actionWidth, y, actionWidth, FormInputSize.SIZE_24, ButtonColor.BASE));
             deleteBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleDelete());
             y += FormInputSize.SIZE_24.height + 6;
 
-            FormTextButton save = content.addComponent(new FormTextButton("Save (dbl-click)", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
-            save.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleSave());
-            y += FormInputSize.SIZE_24.height + 6;
-            FormTextButton load = content.addComponent(new FormTextButton("Load", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
-            load.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleLoad());
-            y += FormInputSize.SIZE_24.height + 16;
+            // Leave space before rename / selection controls
+            y += 10;
 
             content.addComponent(new FormLabel("Rename blueprint", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
             y += 18;
@@ -705,8 +698,13 @@ public final class PaintQuickPaletteOverlay {
             y += 22;
             y = buildModeButtons(content, y);
 
-            content.addComponent(new FormLabel("Save selection as", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
+            // Selection → blueprint: Save / Save As (selection-based)
+            content.addComponent(new FormLabel("Selection \u2192 blueprint", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
             y += 18;
+            FormTextButton saveBtn = content.addComponent(new FormTextButton("Save (dbl-click)", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
+            saveBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleSave());
+            y += FormInputSize.SIZE_24.height + 6;
+
             saveAsInput = content.addComponent(new FormTextInput(12, y, FormInputSize.SIZE_24, PANEL_WIDTH - 140, 32));
             saveAsInput.placeHolder = new StaticMessage("bp_selection");
             FormTextButton saveAsBtn = content.addComponent(new FormTextButton("Save As", PANEL_WIDTH - 120, y, 108, FormInputSize.SIZE_24, ButtonColor.BASE));
@@ -750,25 +748,41 @@ public final class PaintQuickPaletteOverlay {
 
         private int buildModeButtons(FormContentBox content, int y) {
             modeButtons = new ArrayList<>();
-            int btnW = (PANEL_WIDTH - 36) / 2;
-            SelectionState.Mode[] order = new SelectionState.Mode[]{SelectionState.Mode.RECT, SelectionState.Mode.EDGE, SelectionState.Mode.EDGE_FILL, SelectionState.Mode.LASSO_FILL};
+
+            int halfWidth = (PANEL_WIDTH - 36) / 2;
+
+            // First row: Rect / Edge
             int x = 12;
-            for (int i = 0; i < order.length; i++) {
-                SelectionState.Mode mode = order[i];
-                FormTextButton btn = content.addComponent(new FormTextButton(modeLabel(mode), x, y, btnW, FormInputSize.SIZE_24, ButtonColor.BASE));
+            SelectionState.Mode[] firstRow = new SelectionState.Mode[]{
+                    SelectionState.Mode.RECT,
+                    SelectionState.Mode.EDGE
+            };
+            for (SelectionState.Mode mode : firstRow) {
+                FormTextButton btn = content.addComponent(
+                        new FormTextButton(modeLabel(mode), x, y, halfWidth, FormInputSize.SIZE_24, ButtonColor.BASE));
                 btn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
                     SelectionState.setMode(mode);
                     updateModeButtons();
                 });
                 modeButtons.add(new ModeButton(mode, btn));
-                if (i % 2 == 0) {
-                    x += btnW + 12;
-                } else {
-                    x = 12;
-                    y += FormInputSize.SIZE_24.height + 6;
-                }
+                x += halfWidth + 12;
             }
-            FormTextButton allBtn = content.addComponent(new FormTextButton("All", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
+            y += FormInputSize.SIZE_24.height + 6;
+
+            // Second row: Edge+Fill (full width)
+            SelectionState.Mode edgeFillMode = SelectionState.Mode.EDGE_FILL;
+            FormTextButton edgeFillBtn = content.addComponent(
+                    new FormTextButton(modeLabel(edgeFillMode), 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
+            edgeFillBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
+                SelectionState.setMode(edgeFillMode);
+                updateModeButtons();
+            });
+            modeButtons.add(new ModeButton(edgeFillMode, edgeFillBtn));
+            y += FormInputSize.SIZE_24.height + 6;
+
+            // Third row: All (full width)
+            FormTextButton allBtn = content.addComponent(
+                    new FormTextButton("All", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
             allBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> {
                 SelectionState.setMode(SelectionState.Mode.ALL);
                 updateModeButtons();
@@ -781,7 +795,6 @@ public final class PaintQuickPaletteOverlay {
             switch (mode) {
                 case EDGE: return "Edge";
                 case EDGE_FILL: return "Edge+Fill";
-                case LASSO_FILL: return "Lasso";
                 case ALL: return "All";
                 case RECT:
                 default: return "Rect";
@@ -794,14 +807,31 @@ public final class PaintQuickPaletteOverlay {
                 statusLabel.setText("No blueprint selected");
                 return;
             }
+            if (DefaultBlueprintRegistry.isDefaultKey(name)) {
+                statusLabel.setText("Cannot overwrite default; use Save As with a new name.");
+                return;
+            }
+            List<long[]> points = SelectionState.getSelectedPoints();
+            if (points.isEmpty()) {
+                statusLabel.setText("No tiles selected");
+                return;
+            }
             long now = System.currentTimeMillis();
-            if (now - lastSaveClick < 600) {
-                PaintBlueprints.saveBlueprint(name);
-                statusLabel.setText("Saved '" + name + "'");
-                lastSaveClick = 0;
-            } else {
+            boolean exists = PaintBlueprints.exists(name);
+            if (exists && (!name.equals(lastSaveName) || now - lastSaveClick > 5000)) {
+                lastSaveName = name;
                 lastSaveClick = now;
-                statusLabel.setText("Click again to save '" + name + "'");
+                statusLabel.setText("Click Save again within 5s to overwrite '" + name + "' with current selection.");
+                return;
+            }
+            int written = PaintBlueprints.saveSelectionAs(name, points);
+            lastSaveClick = 0;
+            lastSaveName = null;
+            if (written > 0) {
+                statusLabel.setText("Saved '" + name + "' (" + written + " tiles)");
+                refreshBlueprintOptions();
+            } else {
+                statusLabel.setText("Save failed");
             }
         }
 
@@ -833,7 +863,17 @@ public final class PaintQuickPaletteOverlay {
                 statusLabel.setText("No tiles selected");
                 return;
             }
+            long now = System.currentTimeMillis();
+            boolean exists = PaintBlueprints.exists(name);
+            if (exists && (!name.equals(lastSaveAsName) || now - lastSaveAsClick > 5000)) {
+                lastSaveAsName = name;
+                lastSaveAsClick = now;
+                statusLabel.setText("Click Save As again within 5s to overwrite '" + name + "' with current selection.");
+                return;
+            }
             int written = PaintBlueprints.saveSelectionAs(name, points);
+            lastSaveAsClick = 0;
+            lastSaveAsName = null;
             if (written > 0) {
                 statusLabel.setText("Saved '" + name + "' (" + written + " tiles)");
                 saveAsInput.setText(name);
@@ -877,16 +917,6 @@ public final class PaintQuickPaletteOverlay {
             }
         }
 
-        private void handleNew() {
-            String newName = proposeNewBlueprintName();
-            boolean created = PaintBlueprints.createEmpty(newName);
-            currentBlueprint = newName;
-            GridConfig.selectedBlueprint = newName;
-            GridConfig.markDirty(); GridConfig.saveIfDirty();
-            refreshBlueprintOptions();
-            statusLabel.setText(created ? "Created '" + newName + "'" : "Selected '" + newName + "'");
-        }
-
         private void handleDelete() {
             String name = getCurrentBlueprintName();
             if (name == null || name.isBlank()) {
@@ -911,15 +941,6 @@ public final class PaintQuickPaletteOverlay {
 
         private String getCurrentBlueprintName() {
             return currentBlueprint;
-        }
-
-        private String proposeNewBlueprintName() {
-            Set<String> existing = new HashSet<>(Arrays.asList(PaintBlueprints.listBlueprints()));
-            for (int i = 1; i <= 9999; i++) {
-                String cand = "bp_" + i;
-                if (!existing.contains(cand)) return cand;
-            }
-            return "bp_new";
         }
 
         private void refreshBlueprintOptions() {
@@ -956,25 +977,6 @@ public final class PaintQuickPaletteOverlay {
                 defaultDropdown.options.add(info.id, new StaticMessage(info.name));
             }
             defaultDropdown.setSelected("", new StaticMessage("(choose)"));
-        }
-
-        private void handleUseDefault() {
-            if (defaultDropdown == null) return;
-            String id = defaultDropdown.getSelected();
-            if (id == null || id.isBlank()) {
-                statusLabel.setText("Choose a default first");
-                return;
-            }
-            DefaultBlueprintRegistry.DefaultBlueprint info = DefaultBlueprintRegistry.find(id);
-            if (info == null) {
-                statusLabel.setText("Default missing");
-                return;
-            }
-            currentBlueprint = DefaultBlueprintRegistry.selectionKey(info);
-            GridConfig.selectedBlueprint = currentBlueprint;
-            GridConfig.markDirty(); GridConfig.saveIfDirty();
-            refreshBlueprintOptions();
-            statusLabel.setText("Selected default '" + info.name + "'");
         }
 
         private boolean blueprintAvailable(String key, String[] names, List<DefaultBlueprintRegistry.DefaultBlueprint> defaults) {
@@ -1024,6 +1026,10 @@ public final class PaintQuickPaletteOverlay {
                 statusLabel.setText("Default blueprint is empty");
                 return;
             }
+            currentBlueprint = DefaultBlueprintRegistry.selectionKey(info);
+            GridConfig.selectedBlueprint = currentBlueprint;
+            GridConfig.markDirty(); GridConfig.saveIfDirty();
+            refreshBlueprintOptions();
             BlueprintPlacement.begin(tiles);
             if (selectionLabel != null) {
                 selectionLabel.setText("Placement active (default)");

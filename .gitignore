@@ -55,3 +55,8 @@ docs/agents.md
 /latest-crash.log
 
 steam_appid.txt
+
+# Internal agent / AI helper metadata (keep out of public repo)
+AGENTS.md
+agents.md
+docs/agents.md

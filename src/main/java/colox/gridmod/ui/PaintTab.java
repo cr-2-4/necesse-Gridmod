@@ -225,8 +225,14 @@ public class PaintTab {
         FormFairTypeLabel blueprintInstructions = add(new FormFairTypeLabel("", px, pY), px, pY);
         blueprintInstructions.setFontOptions(new FontOptions(12));
         blueprintInstructions.setTextAlign(FairType.TextAlign.LEFT);
-        blueprintInstructions.setText("Manage blueprints through the Quick Palette sidebar.\nUse that panel for save/load, defaults, and import/export.");
-        pY += 46;
+        blueprintInstructions.setText(
+                "Manage blueprints through the Quick Palette sidebar.\n"
+                        + "- Use the Defaults section to load built-in blueprints.\n"
+                        + "- Use Your blueprints + Selection \u2192 blueprint to save your own.\n"
+                        + "Blueprints are always saved from the current selection. "
+                        + "To capture everything, switch selection mode to All first."
+        );
+        pY += 64;
 
         finishCard(cardBP, pY + 4);
         py = cardBP.getY() + cardBP.height + 10;
@@ -240,21 +246,21 @@ public class PaintTab {
         pY += LINE;
 
         selModeDropdown = add(new FormDropdownSelectionButton<>(px, pY - 2, FormInputSize.SIZE_24, ButtonColor.BASE, 280), px, pY - 2);
-        selModeDropdown.options.add("None",             new StaticMessage("Mode: None"));
-        selModeDropdown.options.add("Rect",             new StaticMessage("Mode: Rectangle"));
-        selModeDropdown.options.add("Lasso (edge)",     new StaticMessage("Mode: Lasso (stroke edges)"));
-        selModeDropdown.options.add("Lasso (edge+fill)",new StaticMessage("Mode: Lasso (stroke + fill)"));
-        selModeDropdown.options.add("All",              new StaticMessage("Mode: Select all"));
+        selModeDropdown.options.add("None",        new StaticMessage("Mode: None"));
+        selModeDropdown.options.add("Rect",        new StaticMessage("Mode: Rectangle"));
+        selModeDropdown.options.add("Edge",        new StaticMessage("Mode: Edge stroke"));
+        selModeDropdown.options.add("Edge+Fill",   new StaticMessage("Mode: Edge stroke + fill"));
+        selModeDropdown.options.add("All",         new StaticMessage("Mode: Select all"));
         selModeDropdown.setSelected("None", new StaticMessage("Mode: None"));
         selModeDropdown.onSelected(e -> {
             String v = e.value == null ? "None" : e.value;
             switch (v) {
                 default:
-                case "None":               SelectionState.setMode(SelectionState.Mode.NONE);      break;
-                case "Rect":               SelectionState.setMode(SelectionState.Mode.RECT);      break;
-                case "Lasso (edge)":       SelectionState.setMode(SelectionState.Mode.EDGE);      break;
-                case "Lasso (edge+fill)":  SelectionState.setMode(SelectionState.Mode.EDGE_FILL); break;
-                case "All":                SelectionState.setMode(SelectionState.Mode.ALL);      break;
+                case "None":      SelectionState.setMode(SelectionState.Mode.NONE);      break;
+                case "Rect":      SelectionState.setMode(SelectionState.Mode.RECT);      break;
+                case "Edge":      SelectionState.setMode(SelectionState.Mode.EDGE);      break;
+                case "Edge+Fill": SelectionState.setMode(SelectionState.Mode.EDGE_FILL); break;
+                case "All":       SelectionState.setMode(SelectionState.Mode.ALL);      break;
             }
             updateSelCountLabel();
         });
@@ -297,9 +303,9 @@ public class PaintTab {
         int n = SelectionState.getSelectedCount();
         String mode;
         switch (SelectionState.getMode()) {
-            case RECT:       mode = "Rect"; break;
-            case EDGE:       mode = "Lasso (edge)"; break;
-            case EDGE_FILL:  mode = "Lasso (edge+fill)"; break;
+            case RECT:       mode = "Rect";       break;
+            case EDGE:       mode = "Edge";       break;
+            case EDGE_FILL:  mode = "Edge+Fill";  break;
             default:         mode = "None";
         }
         selCountLabel.setText("Mode: " + mode + " - Selected: " + n + " cells");
