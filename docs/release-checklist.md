@@ -10,8 +10,9 @@ Track the tasks needed before publishing GridMod to the Steam Workshop. Strike i
 
 ## Docs & marketing
 - [x] Update README/`docs/todo.md` with the current feature list, controls, and bundled defaults.
-- [x] Draft Workshop description and controls table (screenshots/GIFs still to be captured manually).
+- [x] Draft Workshop description and controls table
 - [x] Prepare change log / release notes for version bump.
+- [ ] (screenshots/GIFs)
 
 ## Packaging & validation
 - [ ] Bump `modVersion` / `mod.info`, regenerate the jar, and verify `resources/defaults/**` is present.
