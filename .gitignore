@@ -48,6 +48,9 @@ replay_pid*
 /necesse-Gridmod/.settings/
 /Necesse-Gridmod/.settings/
 
+# Internal docs (keep private)
+docs/agents.md
+
 # Logs
 /latest-crash.log
 

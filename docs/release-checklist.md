@@ -4,9 +4,9 @@ Track the tasks needed before publishing GridMod to the Steam Workshop. Strike i
 
 ## Code & UX polish
 - [x] Remove duplicate controls between the main Grid UI and the quick palette so every action lives in one place.
-- [ ] Sweep for dead code, debug prints, and unused assets (e.g., legacy blueprint helpers) to keep the jar lean.
+- [x] Sweep for dead code, debug prints, and unused assets (e.g., legacy blueprint helpers) to keep the jar lean.
 - [x] Add defaults dropdown / tag the default pack so players can tell official vs user-created blueprints inside the quick palette.
-- [ ] Run a smoke test on a clean profile to confirm per-world paint data, defaults, and UI layouts survive restarts.
+- [x] Run a smoke test on a clean profile to confirm per-world paint data, defaults, and UI layouts survive restarts.
 
 ## Docs & marketing
 - [x] Update README/`docs/todo.md` with the current feature list, controls, and bundled defaults.
