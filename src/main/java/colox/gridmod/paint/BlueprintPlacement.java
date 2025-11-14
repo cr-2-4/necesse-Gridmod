@@ -32,6 +32,7 @@ public final class BlueprintPlacement {
         rot = 0;
         flip = false;
         active = true;
+        SelectionState.deactivate();
     }
 
     public static void cancel() {
@@ -81,5 +82,13 @@ public final class BlueprintPlacement {
 
     public static boolean isFlipped() {
         return flip;
+    }
+
+    public static int getBlueprintTileCount() {
+        return rel.size();
+    }
+
+    public static List<BlueprintTile> snapshotRelativeTiles() {
+        return new ArrayList<>(rel);
     }
 }

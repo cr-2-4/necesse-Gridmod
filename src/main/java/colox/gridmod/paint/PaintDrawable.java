@@ -4,6 +4,7 @@ import colox.gridmod.config.GridConfig;
 import colox.gridmod.input.GridKeybinds;
 import necesse.engine.gameLoop.tickManager.TickManager;
 import necesse.engine.input.Input;
+import necesse.engine.window.GameWindow;
 import necesse.engine.window.WindowManager;
 import necesse.gfx.GameResources;
 import necesse.gfx.camera.GameCamera;
@@ -15,7 +16,10 @@ import necesse.level.maps.Level;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 public class PaintDrawable implements necesse.gfx.drawables.Drawable {
     @SuppressWarnings("unused")
@@ -26,6 +30,15 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
             .colorf(1f, 1f, 1f, 1f)
             .shadow(0f, 0f, 0f, 0.85f, 2, 2);
     private static final int TOOLTIP_PADDING = 5;
+    private static final FontOptions HUD_FONT = new FontOptions(16)
+            .outline()
+            .colorf(1f, 1f, 1f, 1f)
+            .shadow(0f, 0f, 0f, 0.9f, 2, 2);
+    private static final int HUD_MARGIN = 12;
+    private static final int HUD_PADDING = 10;
+    private static final int HUD_LINE_GAP = 2;
+    private static final int HUD_INDICATOR_SIZE = 10;
+    private static final int HUD_SECTION_GAP = 6;
 
     public PaintDrawable(Level level, GameCamera camera) {
         this.level = level;
@@ -40,7 +53,8 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         final int tileSize = GridConfig.tileSize;
 
         // Colors from config
-        GridConfig.PaintColor paintColor = GridConfig.getPaintColor(GridConfig.getActivePaintCategory());
+        PaintCategory activeCategory = GridConfig.getActivePaintCategory();
+        GridConfig.PaintColor paintColor = GridConfig.getPaintColor(activeCategory);
         final float pA = paintColor.a;
         final float pR = paintColor.r, pG = paintColor.g, pB = paintColor.b;
         final float eA = GridConfig.eraseAlpha;
@@ -80,7 +94,6 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
             }
         }
         PaintCategory hoverHighlight = hoverCategories.isEmpty() ? null : hoverCategories.get(0);
-
         // committed paint tiles
         for (PaintState.PaintEntry p : snapshot) {
             int tx = p.x;
@@ -139,6 +152,8 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
                 GameResources.empty.initDraw().size(2, h).pos(x + w - 2, y, false).color(rr, gg, bb, oa).draw();
             }
         }
+
+        drawCategoryCounter(snapshot);
 
         // blueprint ghost while placing
         if (BlueprintPlacement.active) {
@@ -307,6 +322,135 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         }
     }
 
+    private void drawCategoryCounter(List<PaintState.PaintEntry> snapshot) {
+        GameWindow window = WindowManager.getWindow();
+        if (window == null || FontManager.bit == null) return;
+
+        HudCounterData data = resolveHudData(snapshot);
+        if (data == null) return;
+        if (data.rows.isEmpty()) return;
+
+        FontOptions font = HUD_FONT;
+        int lineHeight = FontManager.bit.getHeightCeil("Ag", font);
+        int indicatorSize = Math.min(HUD_INDICATOR_SIZE, lineHeight);
+
+        List<String> headerLines = new ArrayList<>();
+        if (data.title != null && !data.title.isEmpty()) headerLines.add(data.title);
+        if (data.subtitle != null && !data.subtitle.isEmpty()) headerLines.add(data.subtitle);
+
+        int textWidth = 0;
+        for (String header : headerLines) {
+            textWidth = Math.max(textWidth, FontManager.bit.getWidthCeil(header, font));
+        }
+        for (CategoryCount row : data.rows) {
+            String line = row.category.label() + ": " + row.count;
+            int rowWidth = indicatorSize + 6 + FontManager.bit.getWidthCeil(line, font);
+            textWidth = Math.max(textWidth, rowWidth);
+        }
+
+        int headerHeight = headerLines.isEmpty() ? 0
+                : headerLines.size() * lineHeight + (headerLines.size() - 1) * HUD_LINE_GAP;
+        int rowsHeight = data.rows.size() * lineHeight + (data.rows.size() - 1) * HUD_LINE_GAP;
+        int innerHeight = headerHeight + rowsHeight;
+        if (headerHeight > 0 && rowsHeight > 0) innerHeight += HUD_SECTION_GAP;
+
+        int boxWidth = textWidth + HUD_PADDING * 2;
+        int boxHeight = innerHeight + HUD_PADDING * 2;
+        int boxX = window.getHudWidth() - HUD_MARGIN - boxWidth;
+        int boxY = HUD_MARGIN;
+
+        Renderer.initQuadDraw(boxWidth, boxHeight)
+                .color(0f, 0f, 0f, 0.65f)
+                .draw(boxX, boxY);
+        Renderer.initQuadDraw(boxWidth, 1).color(1f, 1f, 1f, 0.3f).draw(boxX, boxY);
+        Renderer.initQuadDraw(boxWidth, 1).color(1f, 1f, 1f, 0.3f).draw(boxX, boxY + boxHeight - 1);
+        Renderer.initQuadDraw(1, boxHeight).color(1f, 1f, 1f, 0.3f).draw(boxX, boxY);
+        Renderer.initQuadDraw(1, boxHeight).color(1f, 1f, 1f, 0.3f).draw(boxX + boxWidth - 1, boxY);
+
+        float textY = boxY + HUD_PADDING;
+        for (int i = 0; i < headerLines.size(); i++) {
+            FontManager.bit.drawString(boxX + HUD_PADDING, textY, headerLines.get(i), font);
+            textY += lineHeight;
+            if (i < headerLines.size() - 1) textY += HUD_LINE_GAP;
+        }
+        if (headerHeight > 0 && !data.rows.isEmpty()) {
+            textY += HUD_SECTION_GAP;
+        }
+
+        int indicatorX = boxX + HUD_PADDING;
+        for (int i = 0; i < data.rows.size(); i++) {
+            CategoryCount row = data.rows.get(i);
+            GridConfig.PaintColor color = GridConfig.getPaintColor(row.category);
+            int indicatorY = (int)(textY + (lineHeight - indicatorSize) / 2f);
+            Renderer.initQuadDraw(indicatorSize, indicatorSize)
+                    .color(color.r, color.g, color.b, Math.min(1f, color.a + 0.2f))
+                    .draw(indicatorX, indicatorY);
+
+            String line = row.category.label() + ": " + row.count;
+            FontManager.bit.drawString(indicatorX + indicatorSize + 6, textY, line, font);
+            textY += lineHeight;
+            if (i < data.rows.size() - 1) textY += HUD_LINE_GAP;
+        }
+    }
+
+    private HudCounterData resolveHudData(List<PaintState.PaintEntry> snapshot) {
+        if (BlueprintPlacement.active) {
+            HudCounterData bp = buildBlueprintHudData();
+            if (bp != null) return bp;
+        }
+        if (SelectionState.isActive() && SelectionState.getSelectedCount() > 0) {
+            HudCounterData sel = buildSelectionHudData(snapshot);
+            if (sel != null) return sel;
+        }
+        return null;
+    }
+
+    private HudCounterData buildBlueprintHudData() {
+        List<BlueprintPlacement.BlueprintTile> tiles = BlueprintPlacement.snapshotRelativeTiles();
+        if (tiles.isEmpty()) return null;
+        EnumMap<PaintCategory, Integer> counts = new EnumMap<>(PaintCategory.class);
+        for (BlueprintPlacement.BlueprintTile tile : tiles) {
+            PaintCategory category = PaintCategory.byId(tile.categoryId);
+            counts.merge(category, 1, Integer::sum);
+        }
+        return buildHudDataFromCounts("Blueprint paints", tiles.size(), counts);
+    }
+
+    private HudCounterData buildSelectionHudData(List<PaintState.PaintEntry> snapshot) {
+        List<long[]> selectedPoints = SelectionState.getSelectedPoints();
+        if (selectedPoints.isEmpty()) return null;
+        HashSet<Long> selected = new HashSet<>(selectedPoints.size());
+        for (long[] pt : selectedPoints) {
+            int x = (int) pt[0];
+            int y = (int) pt[1];
+            selected.add(tileKey(x, y));
+        }
+        EnumMap<PaintCategory, Integer> counts = new EnumMap<>(PaintCategory.class);
+        int total = 0;
+        for (PaintState.PaintEntry entry : snapshot) {
+            long key = tileKey(entry.x, entry.y);
+            if (!selected.contains(key)) continue;
+            PaintCategory category = PaintCategory.byId(entry.categoryId);
+            counts.merge(category, 1, Integer::sum);
+            total++;
+        }
+        if (total == 0) return null;
+        return buildHudDataFromCounts("Selection paints", total, counts);
+    }
+
+    private HudCounterData buildHudDataFromCounts(String title, int total, Map<PaintCategory, Integer> counts) {
+        if (counts.isEmpty()) return null;
+        List<CategoryCount> rows = new ArrayList<>();
+        for (PaintCategory category : PaintCategory.values()) {
+            Integer count = counts.get(category);
+            if (count == null || count <= 0) continue;
+            rows.add(new CategoryCount(category, count));
+        }
+        if (rows.isEmpty()) return null;
+        String subtitle = "Layers: " + total;
+        return new HudCounterData(title, subtitle, rows);
+    }
+
     private void drawCellEdges(int x, int y, int size, float r, float g, float b, float a) {
         GameResources.empty.initDraw().size(size, 2).pos(x, y, false).color(r, g, b, a).draw();
         GameResources.empty.initDraw().size(size, 2).pos(x, y + size - 2, false).color(r, g, b, a).draw();
@@ -439,5 +583,30 @@ public class PaintDrawable implements necesse.gfx.drawables.Drawable {
         if (value < 0f) return 0f;
         if (value > 1f) return 1f;
         return value;
+    }
+
+    private static long tileKey(int x, int y) {
+        return ((long)x << 32) | (y & 0xffffffffL);
+    }
+
+    private static final class HudCounterData {
+        final String title;
+        final String subtitle;
+        final List<CategoryCount> rows;
+
+        HudCounterData(String title, String subtitle, List<CategoryCount> rows) {
+            this.title = title;
+            this.subtitle = subtitle;
+            this.rows = rows;
+        }
+    }
+
+    private static final class CategoryCount {
+        final PaintCategory category;
+        final int count;
+        CategoryCount(PaintCategory category, int count) {
+            this.category = category;
+            this.count = count;
+        }
     }
 }

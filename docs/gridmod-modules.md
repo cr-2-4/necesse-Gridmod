@@ -138,3 +138,7 @@ This document inventories the Java sources under `src/main/java/colox/gridmod`, 
 ## Coverage checklist
 
 All Java files under `src/main/java/colox/gridmod/config`, `input`, `overlay`, `paint`, `ui`, and `util` are documented above. Files listed by `find` in these packages: GridConfig, GridKeybinds, GridToggle, GridStyleControls, SettlementBoundsOverlay, GridDrawable, GridOverlayHook, PaintState, SelectionState, Painter, MouseTileUtil, BlueprintPlacement, PaintDrawable, PaintControls, PaintBlueprints, GridUIForm, UiParts, GridTab, GridUI, PaintTab, ConfigPaths. Each entry is described in its respective section to ensure no class from the targeted packages is omitted.【F:src/main/java/colox/gridmod/config/GridConfig.java†L1-L330】【F:src/main/java/colox/gridmod/util/ConfigPaths.java†L1-L37】
+
+## Supporting docs
+- [`docs/vanilla_index.md`](vanilla_index.md) – Necesse engine class cheat sheet used for planning UI/registry/level touch points.
+- [`docs/agents.md`](agents.md) – persistent context that spells out mod goals, constraints, public API, and the vanilla hooks we mirror.

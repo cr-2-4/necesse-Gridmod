@@ -60,6 +60,12 @@ public final class SelectionState {
 
     public static boolean isActive() { return mode != Mode.NONE; }
 
+    /** Deactivates the selection without changing the current draw mode. */
+    public static void deactivate() {
+        if (mode == Mode.NONE) return;
+        setMode(Mode.NONE);
+    }
+
     public static void beginDrag(int tx, int ty) {
         if (mode == Mode.NONE) return;
         dragging = true;
