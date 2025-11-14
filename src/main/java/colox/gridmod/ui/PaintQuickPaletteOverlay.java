@@ -1073,6 +1073,7 @@ public final class PaintQuickPaletteOverlay {
         private FormDropdownSelectionButton<String> dropdown;
         private FormTextInput nameInput;
         private FormLabel status;
+        private FormTextButton newBtn;
 
         GlobalBlueprintPanel() {
             super("Global BPs", "Global blueprints", 360);
@@ -1095,6 +1096,10 @@ public final class PaintQuickPaletteOverlay {
             content.addComponent(nameInput);
             nameInput.setText("");
             y += FormInputSize.SIZE_24.height + 10;
+
+            newBtn = content.addComponent(new FormTextButton("New", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
+            newBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleNew());
+            y += FormInputSize.SIZE_24.height + 6;
 
             FormTextButton save = content.addComponent(new FormTextButton("Save", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
             save.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleSave());
@@ -1121,6 +1126,19 @@ public final class PaintQuickPaletteOverlay {
             return text;
         }
 
+        private void handleNew() {
+            String name = currentName();
+            if (name == null) {
+                status.setText("Enter a name first");
+                return;
+            }
+            boolean created = PaintBlueprints.createGlobalEmpty(name);
+            GridConfig.selectedGlobalBlueprint = name;
+            GridConfig.markDirty();
+            refreshOptions(false);
+            status.setText(created ? "Created '" + name + "'" : "Selected existing '" + name + "'");
+        }
+
         private void handleSave() {
             String name = currentName();
             if (name == null) {
@@ -1130,7 +1148,7 @@ public final class PaintQuickPaletteOverlay {
             PaintBlueprints.saveGlobal(name);
             GridConfig.selectedGlobalBlueprint = name;
             GridConfig.markDirty();
-            refreshOptions();
+            refreshOptions(false);
             status.setText("Saved '" + name + "'");
         }
 
@@ -1159,6 +1177,10 @@ public final class PaintQuickPaletteOverlay {
         }
 
         private void refreshOptions() {
+            refreshOptions(false);
+        }
+
+        private void refreshOptions(boolean preserveText) {
             dropdown.options.clear();
             String[] names = PaintBlueprints.listGlobalBlueprints();
             String selected = GridConfig.selectedGlobalBlueprint;
@@ -1175,12 +1197,14 @@ public final class PaintQuickPaletteOverlay {
                 return;
             }
             dropdown.setSelected(selected, new StaticMessage(selected));
-            nameInput.setText(selected);
+            if (!preserveText) {
+                nameInput.setText(selected);
+            }
         }
 
         @Override
         protected void refreshContent() {
-            refreshOptions();
+            // Handled manually via save/load/delete; avoid overwriting the text field every tick.
         }
     }
 

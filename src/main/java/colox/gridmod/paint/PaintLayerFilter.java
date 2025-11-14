@@ -11,7 +11,7 @@ public enum PaintLayerFilter {
     MIDDLE("Middle (objects + wall background + lighting)", EnumSet.of(PaintLayer.OBJECT, PaintLayer.WALL, PaintLayer.WALL_LIGHTING)),
     WALL_BACKGROUND("Wall background only", EnumSet.of(PaintLayer.WALL)),
     WALL_ATTACHMENTS("Wall attachments only", EnumSet.of(PaintLayer.WALL_ATTACHMENT)),
-    TOP("Top (table decor + wall attachments)", EnumSet.of(PaintLayer.TABLETOP, PaintLayer.WALL_ATTACHMENT));
+    TOP("Top (table decor + wall attachments + lighting)", EnumSet.of(PaintLayer.TABLETOP, PaintLayer.WALL_ATTACHMENT, PaintLayer.WALL_LIGHTING));
 
     private final String label;
     private final EnumSet<PaintLayer> layers;

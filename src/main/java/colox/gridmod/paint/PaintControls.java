@@ -90,8 +90,7 @@ public final class PaintControls {
 
         boolean toggleClicked = PaintQuickPaletteOverlay.consumeToggleClick();
         boolean uiHover = PaintQuickPaletteOverlay.isMouseOverUi() || isMouseOverFormManager();
-        boolean paletteExpanded = PaintQuickPaletteOverlay.isPaletteExpanded();
-        boolean uiBlock = toggleClicked || uiHover || paletteExpanded;
+        boolean uiBlock = toggleClicked || uiHover;
 
         // Placement mode
         boolean rightClickPress = input.isPressed(-99); // RIGHT-CLICK edge

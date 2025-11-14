@@ -112,7 +112,7 @@ public final class DefaultBlueprintRegistry {
         return value;
     }
 
-    private static InputStream openResource(String relativePath) throws IOException {
+    private static InputStream openResource(String relativePath) {
         for (String root : RESOURCE_ROOTS) {
             InputStream in = tryOpen(root + relativePath);
             if (in != null) return in;
@@ -120,18 +120,19 @@ public final class DefaultBlueprintRegistry {
         return null;
     }
 
-    private static InputStream openManifest() throws IOException {
+    private static InputStream openManifest() {
         return openResource(MANIFEST_FILE);
     }
 
     private static InputStream tryOpen(String path) {
-        InputStream in = DefaultBlueprintRegistry.class.getResourceAsStream(path.startsWith("/") ? path : ("/" + path));
+        String normalized = path.startsWith("/") ? path : "/" + path;
+        InputStream in = DefaultBlueprintRegistry.class.getResourceAsStream(normalized);
         if (in != null) return in;
         ClassLoader loader = DefaultBlueprintRegistry.class.getClassLoader();
         if (loader != null) {
-            String normalized = path.startsWith("/") ? path.substring(1) : path;
-            in = loader.getResourceAsStream(normalized);
+            String trimmed = normalized.startsWith("/") ? normalized.substring(1) : normalized;
+            return loader.getResourceAsStream(trimmed);
         }
-        return in;
+        return null;
     }
 }

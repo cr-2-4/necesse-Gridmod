@@ -41,7 +41,7 @@ This file documents the expectations and public surface area of GridMod so futur
 - Grid and settlement settings: `ConfigPaths.settingsFile()` (`grid_settings.txt`).
 - Paint persistence: `ConfigPaths.paintFile()` (`paint_state.txt`).
 - Blueprint storage: `ConfigPaths.blueprintsDir()` for local saves and `ConfigPaths.globalBlueprintsDir()` for global variants.
-- Packaged defaults: `src/main/resources/defaults/manifest.txt` plus `.gridpaint` files are copied into the jar under `resources/defaults/…`; `DefaultBlueprintRegistry` reads from there so players can’t delete them accidentally.
+- Packaged defaults: `src/main/resources/defaults/manifest.txt` plus `.gridpaint` files are embedded into the jar under `resources/defaults/…`; `DefaultBlueprintRegistry` reads from there so the defaults can’t be deleted accidentally.
 - Controls configuration lives in Necesse’s regular control registry once `GridKeybinds.register()` runs; the mod does not serialize controls itself.
 
 ## Vanilla mirrors
