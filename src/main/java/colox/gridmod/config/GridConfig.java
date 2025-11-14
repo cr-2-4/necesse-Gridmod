@@ -5,6 +5,7 @@ import java.util.HashMap;
 
 import necesse.engine.save.LoadData;
 import necesse.engine.save.SaveData;
+import colox.gridmod.paint.DefaultBlueprintRegistry;
 import colox.gridmod.paint.PaintCategory;
 import colox.gridmod.paint.PaintLayerFilter;
 import colox.gridmod.paint.SelectionState;
@@ -170,8 +171,8 @@ public final class GridConfig {
                 paintCategoryColors.put(cat.id(), new PaintColor(r, g, b, a));
             }
 
-            selectedBlueprint = ld.getSafeString("selectedBlueprint", selectedBlueprint);
-            selectedGlobalBlueprint = ld.getSafeString("selectedGlobalBlueprint", selectedGlobalBlueprint);
+            selectedBlueprint = DefaultBlueprintRegistry.canonicalKey(ld.getSafeString("selectedBlueprint", selectedBlueprint));
+            selectedGlobalBlueprint = DefaultBlueprintRegistry.canonicalKey(ld.getSafeString("selectedGlobalBlueprint", selectedGlobalBlueprint));
 
             uiOpacity = ld.getFloat("uiOpacity", uiOpacity);
 

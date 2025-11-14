@@ -13,6 +13,7 @@ import java.util.Set;
 
 import colox.gridmod.config.GridConfig;
 import colox.gridmod.paint.BlueprintPlacement;
+import colox.gridmod.paint.DefaultBlueprintRegistry;
 import colox.gridmod.paint.PaintBlueprints;
 import colox.gridmod.paint.PaintCategory;
 import colox.gridmod.paint.PaintControls;
@@ -618,6 +619,7 @@ public final class PaintQuickPaletteOverlay {
 
     private static final class BlueprintPanel extends SidePanelForm {
         private FormDropdownSelectionButton<String> dropdown;
+        private FormDropdownSelectionButton<String> defaultDropdown;
         private FormLabel statusLabel;
         private FormLabel selectionLabel;
         private String currentBlueprint;
@@ -637,16 +639,31 @@ public final class PaintQuickPaletteOverlay {
         @Override
         protected void buildContent(FormContentBox content) {
             int dropdownWidth = PANEL_WIDTH - 130;
-            dropdown = content.addComponent(new FormDropdownSelectionButton<>(12, 6, FormInputSize.SIZE_24, ButtonColor.BASE, dropdownWidth));
+
+            int y = 6;
+            content.addComponent(new FormLabel("Default blueprints", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
+            y += 18;
+            defaultDropdown = content.addComponent(new FormDropdownSelectionButton<>(12, y, FormInputSize.SIZE_24, ButtonColor.BASE, dropdownWidth));
+            populateDefaultDropdown();
+            FormTextButton selectDefault = content.addComponent(new FormTextButton("Select", 24 + dropdownWidth, y, PANEL_WIDTH - (36 + dropdownWidth), FormInputSize.SIZE_24, ButtonColor.BASE));
+            selectDefault.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleUseDefault());
+            y += FormInputSize.SIZE_24.height + 6;
+            FormTextButton loadDefault = content.addComponent(new FormTextButton("Load default", 12, y, PANEL_WIDTH - 24, FormInputSize.SIZE_24, ButtonColor.BASE));
+            loadDefault.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleLoadDefault());
+            y += FormInputSize.SIZE_24.height + 12;
+
+            content.addComponent(new FormLabel("Your blueprints", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
+            y += 18;
+            dropdown = content.addComponent(new FormDropdownSelectionButton<>(12, y, FormInputSize.SIZE_24, ButtonColor.BASE, dropdownWidth));
             dropdown.onSelected(e -> {
                 currentBlueprint = e.value;
                 GridConfig.selectedBlueprint = currentBlueprint;
                 GridConfig.markDirty();
             });
-            FormTextButton refresh = content.addComponent(new FormTextButton("Refresh", 24 + dropdownWidth, 6, PANEL_WIDTH - (36 + dropdownWidth), FormInputSize.SIZE_24, ButtonColor.BASE));
+            FormTextButton refresh = content.addComponent(new FormTextButton("Refresh", 24 + dropdownWidth, y, PANEL_WIDTH - (36 + dropdownWidth), FormInputSize.SIZE_24, ButtonColor.BASE));
             refresh.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> refreshBlueprintOptions());
+            y += FormInputSize.SIZE_24.height + 10;
 
-            int y = 6 + FormInputSize.SIZE_24.height + 8;
             int actionWidth = (PANEL_WIDTH - 36) / 2;
             FormTextButton createBtn = content.addComponent(new FormTextButton("New", 12, y, actionWidth, FormInputSize.SIZE_24, ButtonColor.BASE));
             createBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleNew());
@@ -661,14 +678,6 @@ public final class PaintQuickPaletteOverlay {
             load.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleLoad());
             y += FormInputSize.SIZE_24.height + 16;
 
-            content.addComponent(new FormLabel("Save selection as", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
-            y += 18;
-            saveAsInput = content.addComponent(new FormTextInput(12, y, FormInputSize.SIZE_24, PANEL_WIDTH - 140, 32));
-            saveAsInput.placeHolder = new StaticMessage("bp_selection");
-            FormTextButton saveAsBtn = content.addComponent(new FormTextButton("Save As", PANEL_WIDTH - 120, y, 108, FormInputSize.SIZE_24, ButtonColor.BASE));
-            saveAsBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleSaveSelectionAs());
-            y += FormInputSize.SIZE_24.height + 12;
-
             content.addComponent(new FormLabel("Rename blueprint", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
             y += 18;
             renameInput = content.addComponent(new FormTextInput(12, y, FormInputSize.SIZE_24, PANEL_WIDTH - 140, 32));
@@ -676,10 +685,6 @@ public final class PaintQuickPaletteOverlay {
             FormTextButton renameBtn = content.addComponent(new FormTextButton("Rename", PANEL_WIDTH - 120, y, 108, FormInputSize.SIZE_24, ButtonColor.BASE));
             renameBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleRename());
             y += FormInputSize.SIZE_24.height + 16;
-
-            content.addComponent(new FormLabel("Selection mode", new FontOptions(14), FormLabel.ALIGN_LEFT, 12, y));
-            y += 22;
-            y = buildModeButtons(content, y);
 
             content.addComponent(new FormLabel("Selection layer", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
             y += 18;
@@ -694,6 +699,18 @@ public final class PaintQuickPaletteOverlay {
                 updateModeButtons();
                 GridConfig.saveIfDirty();
             });
+            y += FormInputSize.SIZE_24.height + 16;
+
+            content.addComponent(new FormLabel("Selection mode", new FontOptions(14), FormLabel.ALIGN_LEFT, 12, y));
+            y += 22;
+            y = buildModeButtons(content, y);
+
+            content.addComponent(new FormLabel("Save selection as", new FontOptions(12), FormLabel.ALIGN_LEFT, 12, y));
+            y += 18;
+            saveAsInput = content.addComponent(new FormTextInput(12, y, FormInputSize.SIZE_24, PANEL_WIDTH - 140, 32));
+            saveAsInput.placeHolder = new StaticMessage("bp_selection");
+            FormTextButton saveAsBtn = content.addComponent(new FormTextButton("Save As", PANEL_WIDTH - 120, y, 108, FormInputSize.SIZE_24, ButtonColor.BASE));
+            saveAsBtn.onClicked((FormEventListener<FormInputEvent<FormButton>>) e -> handleSaveSelectionAs());
             y += FormInputSize.SIZE_24.height + 16;
 
             int controlY = y;
@@ -833,6 +850,10 @@ public final class PaintQuickPaletteOverlay {
                 statusLabel.setText("No blueprint selected");
                 return;
             }
+            if (DefaultBlueprintRegistry.isDefaultKey(current)) {
+                statusLabel.setText("Cannot rename default; import it to edit.");
+                return;
+            }
             String raw = renameInput.getText();
             String next = raw == null ? "" : raw.trim();
             if (next.isEmpty()) {
@@ -872,6 +893,10 @@ public final class PaintQuickPaletteOverlay {
                 statusLabel.setText("No blueprint selected");
                 return;
             }
+            if (DefaultBlueprintRegistry.isDefaultKey(name)) {
+                statusLabel.setText("Cannot delete default; import it to edit.");
+                return;
+            }
             boolean ok = PaintBlueprints.deleteBlueprint(name);
             if (ok) {
                 currentBlueprint = "";
@@ -899,30 +924,111 @@ public final class PaintQuickPaletteOverlay {
 
         private void refreshBlueprintOptions() {
             dropdown.options.clear();
-            dropdown.options.add("", new StaticMessage("None"));
+            dropdown.options.add("", new StaticMessage("(none)"));
+
+            List<DefaultBlueprintRegistry.DefaultBlueprint> defaults = DefaultBlueprintRegistry.values();
+
             String[] names = PaintBlueprints.listBlueprints();
+            for (String n : names) {
+                dropdown.options.add(n, new StaticMessage(n));
+            }
+
             currentBlueprint = GridConfig.selectedBlueprint;
             if (currentBlueprint == null) currentBlueprint = "";
             currentBlueprint = currentBlueprint.trim();
 
-            boolean wasCleared = currentBlueprint.isEmpty();
-            boolean found = wasCleared;
-
-            for (String n : names) {
-                dropdown.options.add(n, new StaticMessage(n));
-                if (!found && n.equals(currentBlueprint)) {
-                    found = true;
-                }
+            boolean found = blueprintAvailable(currentBlueprint, names, defaults);
+            if (!found) {
+                currentBlueprint = "";
             }
 
-            if (!found && !wasCleared && names.length > 0) {
-                currentBlueprint = names[0];
-                found = true;
-            }
+            GridConfig.selectedBlueprint = currentBlueprint;
+            dropdown.setSelected(currentBlueprint, new StaticMessage(blueprintLabel(currentBlueprint)));
+            statusLabel.setText(blueprintDescription(currentBlueprint));
+            if (renameInput != null) renameInput.setText(DefaultBlueprintRegistry.isDefaultKey(currentBlueprint) ? "" : currentBlueprint);
+        }
 
-            dropdown.setSelected(currentBlueprint, new StaticMessage(currentBlueprint.isEmpty() ? "None" : currentBlueprint));
-            statusLabel.setText("");
-            if (renameInput != null) renameInput.setText(currentBlueprint);
+        private void populateDefaultDropdown() {
+            if (defaultDropdown == null) return;
+            defaultDropdown.options.clear();
+            defaultDropdown.options.add("", new StaticMessage("(choose)"));
+            for (DefaultBlueprintRegistry.DefaultBlueprint info : DefaultBlueprintRegistry.values()) {
+                defaultDropdown.options.add(info.id, new StaticMessage(info.name));
+            }
+            defaultDropdown.setSelected("", new StaticMessage("(choose)"));
+        }
+
+        private void handleUseDefault() {
+            if (defaultDropdown == null) return;
+            String id = defaultDropdown.getSelected();
+            if (id == null || id.isBlank()) {
+                statusLabel.setText("Choose a default first");
+                return;
+            }
+            DefaultBlueprintRegistry.DefaultBlueprint info = DefaultBlueprintRegistry.find(id);
+            if (info == null) {
+                statusLabel.setText("Default missing");
+                return;
+            }
+            currentBlueprint = DefaultBlueprintRegistry.selectionKey(info);
+            GridConfig.selectedBlueprint = currentBlueprint;
+            GridConfig.markDirty(); GridConfig.saveIfDirty();
+            refreshBlueprintOptions();
+            statusLabel.setText("Selected default '" + info.name + "'");
+        }
+
+        private boolean blueprintAvailable(String key, String[] names, List<DefaultBlueprintRegistry.DefaultBlueprint> defaults) {
+            if (key == null || key.isEmpty()) return true;
+            if (DefaultBlueprintRegistry.isDefaultKey(key)) {
+                String id = DefaultBlueprintRegistry.keyToId(key);
+                return DefaultBlueprintRegistry.find(id) != null;
+            }
+            for (String name : names) {
+                if (name.equals(key)) return true;
+            }
+            return false;
+        }
+
+        private String blueprintLabel(String key) {
+            if (key == null || key.isEmpty()) return "(none)";
+            if (DefaultBlueprintRegistry.isDefaultKey(key)) {
+                String id = DefaultBlueprintRegistry.keyToId(key);
+                DefaultBlueprintRegistry.DefaultBlueprint info = DefaultBlueprintRegistry.find(id);
+                return info == null ? "(default)" : info.name + " (default)";
+            }
+            return key;
+        }
+
+        private String blueprintDescription(String key) {
+            if (!DefaultBlueprintRegistry.isDefaultKey(key)) return "";
+            String id = DefaultBlueprintRegistry.keyToId(key);
+            DefaultBlueprintRegistry.DefaultBlueprint info = DefaultBlueprintRegistry.find(id);
+            if (info == null) return "";
+            return info.description;
+        }
+
+        private void handleLoadDefault() {
+            if (defaultDropdown == null) return;
+            String id = defaultDropdown.getSelected();
+            if (id == null || id.isBlank()) {
+                statusLabel.setText("Choose a default first");
+                return;
+            }
+            DefaultBlueprintRegistry.DefaultBlueprint info = DefaultBlueprintRegistry.find(id);
+            if (info == null) {
+                statusLabel.setText("Default missing");
+                return;
+            }
+            List<BlueprintPlacement.BlueprintTile> tiles = DefaultBlueprintRegistry.load(id);
+            if (tiles.isEmpty()) {
+                statusLabel.setText("Default blueprint is empty");
+                return;
+            }
+            BlueprintPlacement.begin(tiles);
+            if (selectionLabel != null) {
+                selectionLabel.setText("Placement active (default)");
+            }
+            statusLabel.setText("Loaded default '" + info.name + "'");
         }
 
         private void updateModeButtons() {

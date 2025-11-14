@@ -7,8 +7,11 @@ import necesse.engine.save.SaveData;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /*
@@ -95,22 +98,39 @@ public final class PaintBlueprints {
             return rel;
         }
         try {
-            LoadData ld = new LoadData(file);
-            String points = ld.getSafeString("points", "");
-            if (!points.isEmpty()) {
-                String[] pairs = points.split(";");
-                for (String pair : pairs) {
-                    if (pair.isEmpty()) continue;
-                    String[] xy = pair.split(",");
-                    if (xy.length < 2) continue;
-                    int dx = Integer.parseInt(xy[0].trim());
-                    int dy = Integer.parseInt(xy[1].trim());
-                    String cat = (xy.length >= 3) ? xy[2].trim() : GridConfig.getActivePaintCategory().id();
-                    rel.add(new colox.gridmod.paint.BlueprintPlacement.BlueprintTile(dx, dy, cat));
-                }
-            }
+            rel.addAll(readBlueprint(new LoadData(file)));
         } catch (Throwable t) {
             t.printStackTrace();
+        }
+        return rel;
+    }
+
+    public static List<colox.gridmod.paint.BlueprintPlacement.BlueprintTile> loadFromStream(InputStream in) {
+        if (in == null) return Collections.emptyList();
+        try {
+            String script = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            return readBlueprint(new LoadData(script));
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        return Collections.emptyList();
+    }
+
+    private static List<colox.gridmod.paint.BlueprintPlacement.BlueprintTile> readBlueprint(LoadData ld) {
+        List<colox.gridmod.paint.BlueprintPlacement.BlueprintTile> rel = new ArrayList<>();
+        if (ld == null) return rel;
+        String points = ld.getSafeString("points", "");
+        if (!points.isEmpty()) {
+            String[] pairs = points.split(";");
+            for (String pair : pairs) {
+                if (pair.isEmpty()) continue;
+                String[] xy = pair.split(",");
+                if (xy.length < 2) continue;
+                int dx = Integer.parseInt(xy[0].trim());
+                int dy = Integer.parseInt(xy[1].trim());
+                String cat = (xy.length >= 3) ? xy[2].trim() : GridConfig.getActivePaintCategory().id();
+                rel.add(new colox.gridmod.paint.BlueprintPlacement.BlueprintTile(dx, dy, cat));
+            }
         }
         return rel;
     }
@@ -165,6 +185,35 @@ public final class PaintBlueprints {
         }
         boolean ok = f.delete();
         return ok;
+    }
+
+    public static boolean saveBlueprintCopy(String name, List<BlueprintPlacement.BlueprintTile> tiles) {
+        ensureDir();
+        File f = fileFor(name);
+        if (tiles == null || tiles.isEmpty()) return false;
+        try {
+            int minX = Integer.MAX_VALUE;
+            int minY = Integer.MAX_VALUE;
+            for (BlueprintPlacement.BlueprintTile tile : tiles) {
+                if (tile.dx < minX) minX = tile.dx;
+                if (tile.dy < minY) minY = tile.dy;
+            }
+            StringBuilder sb = new StringBuilder(tiles.size() * 8);
+            for (BlueprintPlacement.BlueprintTile tile : tiles) {
+                int relX = tile.dx - minX;
+                int relY = tile.dy - minY;
+                sb.append(relX).append(',').append(relY).append(',').append(tile.categoryId).append(';');
+            }
+            SaveData sd = new SaveData("paint_blueprint");
+            sd.addSafeString("points", sb.toString());
+            sd.addInt("normX", minX);
+            sd.addInt("normY", minY);
+            sd.saveScript(f);
+            return true;
+        } catch (Throwable t) {
+            t.printStackTrace();
+            return false;
+        }
     }
 
     public static boolean renameBlueprint(String oldName, String newName) {

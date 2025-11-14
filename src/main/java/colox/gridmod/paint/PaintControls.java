@@ -19,6 +19,7 @@ import necesse.level.maps.levelData.settlementData.NetworkSettlementData;
 
 import java.lang.reflect.Method;
 import java.util.ConcurrentModificationException;
+import java.util.Collections;
 import java.util.List;
 
 public final class PaintControls {
@@ -28,13 +29,6 @@ public final class PaintControls {
     private static boolean suppressPaintUntilLmbUp = false;
     private static Level currentLevel;
     private static PlayerMob currentPlayer;
-
-    private static String currentBlueprintName() {
-        String n = colox.gridmod.config.GridConfig.selectedBlueprint;
-        if (n == null) return null;
-        String trimmed = n.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
 
     public static void tick(Level level, GameCamera camera, PlayerMob player) {
         PaintQuickPaletteOverlay.tick(PaintState.enabled);
@@ -80,13 +74,14 @@ public final class PaintControls {
         }
 
         // Blueprint quick save/load
-        String bpName = currentBlueprintName();
-
         if (GridKeybinds.PAINT_BP_SAVE != null && GridKeybinds.PAINT_BP_SAVE.isPressed()) {
-            PaintBlueprints.saveBlueprint(bpName);
+            String selection = GridConfig.selectedBlueprint;
+            if (selection != null && !selection.isEmpty() && !DefaultBlueprintRegistry.isDefaultKey(selection)) {
+                PaintBlueprints.saveBlueprint(selection);
+            }
         }
-        if (bpName != null && GridKeybinds.PAINT_BP_LOAD != null && GridKeybinds.PAINT_BP_LOAD.isPressed()) {
-            List<BlueprintPlacement.BlueprintTile> rel = PaintBlueprints.loadRelative(bpName);
+        if (GridKeybinds.PAINT_BP_LOAD != null && GridKeybinds.PAINT_BP_LOAD.isPressed()) {
+            List<BlueprintPlacement.BlueprintTile> rel = loadSelectedBlueprint();
             if (!rel.isEmpty()) {
                 BlueprintPlacement.begin(rel);
                 if (input.isKeyDown(-100)) suppressPaintUntilLmbUp = true;
@@ -337,6 +332,17 @@ public final class PaintControls {
         try { if (input.isKeyDown(-99)) return true; } catch (Throwable ignored) {}
         try { if (input.isPressed(-99)) return true; } catch (Throwable ignored) {}
         return false;
+    }
+
+    private static List<BlueprintPlacement.BlueprintTile> loadSelectedBlueprint() {
+        String selection = DefaultBlueprintRegistry.canonicalKey(GridConfig.selectedBlueprint);
+        GridConfig.selectedBlueprint = selection;
+        if (selection == null || selection.isBlank()) return Collections.emptyList();
+        if (DefaultBlueprintRegistry.isDefaultKey(selection)) {
+            String id = DefaultBlueprintRegistry.keyToId(selection);
+            return id == null ? Collections.emptyList() : DefaultBlueprintRegistry.load(id);
+        }
+        return PaintBlueprints.loadRelative(selection);
     }
 
     /** Remember the tile where the flag should go so the overlay always follows the true placement point. */

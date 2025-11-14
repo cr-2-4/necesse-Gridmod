@@ -22,6 +22,7 @@ This file documents the expectations and public surface area of GridMod so futur
 - `colox.gridmod.ui.GridUI` / `GridUIForm` / `UiParts` – reflection-backed helpers for creating, showing, and positioning the Grid UI form through `FormManager`; `GridUI$$` is the “UI server” that ensures only one form per state manager exists.
 - `colox.gridmod.ui.PaintQuickPaletteOverlay` – sidebar overlay built with Necesse `Form` components; it aims to mimic Necesse menus and exposes helpers like `tick()`, `isMouseOverUi()`, and `consumeToggleClick()` for the paint loop.
 - `colox.gridmod.paint.PaintControls` – per-frame tick called from `GridOverlayHook`; contains painting, selection, blueprint placement, and settlement shortcut logic plus UI-safe gates.
+- `colox.gridmod.paint.DefaultBlueprintRegistry` – loads the packaged blueprint manifest (`src/main/resources/defaults/manifest.txt`) plus the default `.gridpaint` files, exposes read-only IDs for UI dropdowns, and converts legacy `_default_<id>` selections into the canonical `_default:<id>` key format.
 - `colox.gridmod.util.WorldKeyProvider` – computes the active world GUID used to scope paint data (via `PaintState`) under `mods-data/colox.gridmod/worlds/<worldID>/`; it falls back to `"global"` until a world is loaded.
 - `colox.gridmod.util.WorldKeyProvider` – computes the world GUID key used to locate `paint_state.txt`/`grid_settings.txt` under `mods-data/colox.gridmod/worlds/<worldID>/`, so each save gets its own paint/settlement data while legacy files stay untouched.
 - `colox.gridmod.input.PaintModeInputGate` – centralized helper that reports whether paint, selection, or blueprint controls are active so other patches can reuse the “overlay is active” check.
@@ -40,6 +41,7 @@ This file documents the expectations and public surface area of GridMod so futur
 - Grid and settlement settings: `ConfigPaths.settingsFile()` (`grid_settings.txt`).
 - Paint persistence: `ConfigPaths.paintFile()` (`paint_state.txt`).
 - Blueprint storage: `ConfigPaths.blueprintsDir()` for local saves and `ConfigPaths.globalBlueprintsDir()` for global variants.
+- Packaged defaults: `src/main/resources/defaults/manifest.txt` plus `.gridpaint` files are copied into the jar under `resources/defaults/…`; `DefaultBlueprintRegistry` reads from there so players can’t delete them accidentally.
 - Controls configuration lives in Necesse’s regular control registry once `GridKeybinds.register()` runs; the mod does not serialize controls itself.
 
 ## Vanilla mirrors
