@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Comparator;
 
 import colox.gridmod.util.ConfigPaths;
+import colox.gridmod.util.WorldKeyProvider;
 import necesse.engine.save.LoadData;
 import necesse.engine.save.SaveData;
 
@@ -21,7 +22,8 @@ public final class PaintState {
     private static final Map<Long, PaintCell> painted = new HashMap<>();
     private static final PaintLayer[] LAYERS = PaintLayer.values();
     private static boolean dirty = false;
-    private static File file = ConfigPaths.paintFile().toFile();
+private static String currentWorldKey = "global";
+private static File file = ConfigPaths.worldPaintFile(currentWorldKey).toFile();
 
     private PaintState() {}
 
@@ -127,11 +129,20 @@ public final class PaintState {
     }
 
     public static void load() {
-        try {
-            Path p = ConfigPaths.paintFile();
-            file = p.toFile();
-            if (!file.exists()) { save(); return; }
+        loadForWorld(WorldKeyProvider.currentWorldKey());
+    }
 
+    private static void loadForWorld(String worldKey) {
+        currentWorldKey = (worldKey == null || worldKey.isBlank()) ? "global" : worldKey;
+        Path p = ConfigPaths.worldPaintFile(currentWorldKey);
+        file = p.toFile();
+        if (!file.exists()) {
+            painted.clear();
+            writeCurrentStateToFile();
+            return;
+        }
+
+        try {
             LoadData ld = new LoadData(file);
             enabled = ld.getBoolean("enabled", false);
             brush   = ld.getInt("brush", 1);
@@ -145,7 +156,6 @@ public final class PaintState {
 
             painted.clear();
             String points = ld.getSafeString("points", "");
-            int parsed = 0;
             if (!points.isEmpty()) {
                 String[] pairs = points.split(";");
                 for (String pair : pairs) {
@@ -156,19 +166,29 @@ public final class PaintState {
                     int y = Integer.parseInt(xy[1].trim());
                     String cat = (xy.length >= 3) ? xy[2].trim() : colox.gridmod.paint.PaintCategory.defaultCategory().id();
                     add(x, y, cat);
-                    parsed++;
                 }
             }
             dirty = false;
-            System.out.println("[GridMod] PaintState.load path=" + file.getAbsolutePath() + " tiles=" + parsed);
         } catch (Throwable t) {
             t.printStackTrace();
         }
     }
 
+    public static void ensureWorldSynced() {
+        String key = WorldKeyProvider.currentWorldKey();
+        if (!key.equals(currentWorldKey)) {
+            loadForWorld(key);
+        }
+    }
+
     public static void save() {
+        ensureWorldSynced();
+        writeCurrentStateToFile();
+    }
+
+    private static void writeCurrentStateToFile() {
         try {
-            if (file == null) file = ConfigPaths.paintFile().toFile();
+            if (file == null) file = ConfigPaths.worldPaintFile(currentWorldKey).toFile();
             SaveData sd = new SaveData("gridpaint");
             sd.addBoolean("enabled", enabled);
             sd.addInt("brush", brush);
@@ -185,7 +205,6 @@ public final class PaintState {
             ConfigPaths.modDataDir().toFile().mkdirs();
             sd.saveScript(file);
             dirty = false;
-            System.out.println("[GridMod] PaintState.save path=" + file.getAbsolutePath() + " tiles=" + painted.size());
         } catch (Throwable t) {
             t.printStackTrace();
         }

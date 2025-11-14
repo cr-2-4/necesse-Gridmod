@@ -125,30 +125,23 @@ public final class GridKeybinds {
             // Paint visibility toggle (draw only)
             if (PAINT_VIS_TOGGLE != null && PAINT_VIS_TOGGLE.isPressed()) {
                 GridConfig.togglePaintVisible();
-                System.out.println("[GridMod] Paint overlay visible = " + GridConfig.paintVisible);
             }
 
             // Paint enable/clear/brush size (input gate + helpers)
             if (PAINT_TOGGLE != null && PAINT_TOGGLE.isPressed()) {
                 PaintState.toggle();
-                System.out.println("[GridMod] Paint enabled = " + PaintState.enabled);
             }
             if (PAINT_CLEAR != null && PAINT_CLEAR.isPressed()) {
                 PaintState.clear();
-                System.out.println("[GridMod] Cleared paint points.");
             }
             if (BRUSH_PLUS != null && BRUSH_PLUS.isPressed()) {
                 PaintState.incBrush();
-                System.out.println("[GridMod] Brush size -> " + PaintState.getBrush());
             }
             if (BRUSH_MINUS != null && BRUSH_MINUS.isPressed()) {
                 PaintState.decBrush();
-                System.out.println("[GridMod] Brush size -> " + PaintState.getBrush());
             }
 
             // (Other grid/settlement style keys remain in their existing places.)
-        } catch (Throwable t) {
-            System.out.println("[GridUI] poll error: " + t);
-        }
+        } catch (Throwable ignored) {}
     }
 }

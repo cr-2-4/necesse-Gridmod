@@ -57,7 +57,6 @@ public final class PaintBlueprints {
         try {
             List<PaintState.PaintEntry> pts = PaintState.iterateSnapshot();
             if (pts.isEmpty()) {
-                System.out.println("[GridMod] No painted tiles to save.");
                 return;
             }
 
@@ -81,7 +80,6 @@ public final class PaintBlueprints {
             sd.addInt("normY", minY);
             sd.saveScript(file);
 
-            System.out.println("[GridMod] Saved blueprint: " + file.getAbsolutePath());
         } catch (Throwable t) {
             t.printStackTrace();
         }
@@ -111,7 +109,6 @@ public final class PaintBlueprints {
                     rel.add(new colox.gridmod.paint.BlueprintPlacement.BlueprintTile(dx, dy, cat));
                 }
             }
-            System.out.println("[GridMod] Loaded blueprint '" + name + "' tiles=" + rel.size());
         } catch (Throwable t) {
             t.printStackTrace();
         }
@@ -126,6 +123,10 @@ public final class PaintBlueprints {
         for (File f : files) {
             String base = f.getName().substring(0, f.getName().length() - ".gridpaint".length());
             if (LEGACY_GLOBAL_NAME.equals(base)) continue; // hide legacy from relative list
+            if (base.isEmpty()) {
+                f.delete();
+                continue;
+            }
             out.add(base);
         }
         return out.toArray(new String[0]);
@@ -146,7 +147,6 @@ public final class PaintBlueprints {
             sd.addInt("normX", 0);
             sd.addInt("normY", 0);
             sd.saveScript(f);
-            System.out.println("[GridMod] Created empty blueprint: " + f.getAbsolutePath());
             return true;
         } catch (Throwable t) {
             t.printStackTrace();
@@ -156,13 +156,14 @@ public final class PaintBlueprints {
 
     public static boolean deleteBlueprint(String name) {
         ensureDir();
+        if (name == null || name.isBlank()) {
+            return false;
+        }
         File f = fileFor(name);
         if (!f.exists()) {
-            System.out.println("[GridMod] deleteBlueprint: not found: " + f.getAbsolutePath());
             return false;
         }
         boolean ok = f.delete();
-        System.out.println("[GridMod] deleteBlueprint '" + name + "': " + ok);
         return ok;
     }
 
@@ -171,11 +172,9 @@ public final class PaintBlueprints {
         File src = fileFor(oldName);
         File dst = fileFor(newName);
         if (!src.exists()) {
-            System.out.println("[GridMod] renameBlueprint: source missing: " + src.getAbsolutePath());
             return false;
         }
         if (dst.exists()) {
-            System.out.println("[GridMod] renameBlueprint: target exists: " + dst.getAbsolutePath());
             return false;
         }
         boolean ok;
@@ -189,7 +188,6 @@ public final class PaintBlueprints {
             e.printStackTrace();
             ok = false;
         }
-        System.out.println("[GridMod] renameBlueprint '" + oldName + "' -> '" + newName + "': " + ok);
         return ok;
     }
 
@@ -203,7 +201,6 @@ public final class PaintBlueprints {
         ensureDir();
         File file = fileFor(name);
         if (absPoints == null || absPoints.isEmpty()) {
-            System.out.println("[GridMod] saveSelectionAs: empty selection.");
             return 0;
         }
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
@@ -230,7 +227,6 @@ public final class PaintBlueprints {
             sd.addInt("normX", minX);
             sd.addInt("normY", minY);
             sd.saveScript(file);
-            System.out.println("[GridMod] Saved selection '" + name + "' layers=" + written);
             return written;
         } catch (Throwable t) {
             t.printStackTrace();
@@ -271,7 +267,6 @@ public final class PaintBlueprints {
             sd.addSafeString("type", "global");
             sd.addInt("count", 0);
             sd.saveScript(f);
-            System.out.println("[GridMod] Created empty GLOBAL blueprint: " + f.getAbsolutePath());
             return true;
         } catch (Throwable t) {
             t.printStackTrace();
@@ -295,7 +290,6 @@ public final class PaintBlueprints {
             sd.addInt("count", pts.size());
             sd.saveScript(f);
             count = pts.size();
-            System.out.println("[GridMod] Global saved '" + name + "' tiles=" + count + " path=" + f.getAbsolutePath());
         } catch (Throwable t) {
             t.printStackTrace();
         }
@@ -306,7 +300,6 @@ public final class PaintBlueprints {
         ensureGlobalDir();
         File f = globalFileFor(name);
         if (!f.exists()) {
-            System.out.println("[GridMod] loadGlobal not found: " + f.getAbsolutePath());
             return 0;
         }
         int restored = 0;
@@ -328,7 +321,6 @@ public final class PaintBlueprints {
                 }
             }
             PaintState.saveIfDirty();
-            System.out.println("[GridMod] Global loaded '" + name + "' tiles=" + restored);
         } catch (Throwable t) {
             t.printStackTrace();
         }
@@ -339,11 +331,9 @@ public final class PaintBlueprints {
         ensureGlobalDir();
         File f = globalFileFor(name);
         if (!f.exists()) {
-            System.out.println("[GridMod] deleteGlobal: not found: " + f.getAbsolutePath());
             return false;
         }
         boolean ok = f.delete();
-        System.out.println("[GridMod] deleteGlobal '" + name + "': " + ok);
         return ok;
     }
 
@@ -352,11 +342,9 @@ public final class PaintBlueprints {
         File src = globalFileFor(oldName);
         File dst = globalFileFor(newName);
         if (!src.exists()) {
-            System.out.println("[GridMod] renameGlobal: source missing: " + src.getAbsolutePath());
             return false;
         }
         if (dst.exists()) {
-            System.out.println("[GridMod] renameGlobal: target exists: " + dst.getAbsolutePath());
             return false;
         }
         boolean ok;
@@ -370,7 +358,6 @@ public final class PaintBlueprints {
             e.printStackTrace();
             ok = false;
         }
-        System.out.println("[GridMod] renameGlobal '" + oldName + "' -> '" + newName + "': " + ok);
         return ok;
     }
 
@@ -391,7 +378,6 @@ public final class PaintBlueprints {
             sd.addSafeString("type", "global");
             sd.addInt("count", pts.size());
             sd.saveScript(file);
-            System.out.println("[GridMod] Legacy _global saved tiles=" + pts.size());
         } catch (Throwable t) {
             t.printStackTrace();
         }
@@ -419,7 +405,6 @@ public final class PaintBlueprints {
                 }
             }
             PaintState.saveIfDirty();
-            System.out.println("[GridMod] Legacy _global restored tiles=" + restored);
         } catch (Throwable t) {
             t.printStackTrace();
         }
@@ -436,7 +421,6 @@ public final class PaintBlueprints {
 
         try {
             if (selection.isEmpty()) {
-                System.out.println("[GridMod] Selection is empty; nothing to save.");
                 return;
             }
 
@@ -465,7 +449,6 @@ public final class PaintBlueprints {
             sd.addInt("normY", minY);
             sd.saveScript(file);
 
-            System.out.println("[GridMod] Saved selection blueprint: " + file.getAbsolutePath());
         } catch (Throwable t) {
             t.printStackTrace();
         }

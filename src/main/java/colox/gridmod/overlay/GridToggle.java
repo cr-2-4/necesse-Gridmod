@@ -18,7 +18,6 @@ public final class GridToggle {
         colox.gridmod.config.GridConfig.gridEnabled = enabled;
         colox.gridmod.config.GridConfig.markDirty();
         colox.gridmod.config.GridConfig.saveIfDirty();
-        System.out.println("[GridMod] Grid enabled = " + enabled);
     }
 
     public static void tick() {

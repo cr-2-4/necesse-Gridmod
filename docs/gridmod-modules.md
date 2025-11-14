@@ -16,6 +16,16 @@ This document inventories the Java sources under `src/main/java/colox/gridmod`, 
 - **Declares:** `colox.gridmod.input.GridKeybinds` with static `Control` fields and helper methods.
 - **Key dependencies:** Config toggles via `GridConfig`; paint state mutations via `colox.gridmod.paint.PaintState`; UI toggling through `colox.gridmod.ui.GridUI`; relies on Necesse `Control` and `StaticMessage` APIs.
 
+### PaintModeInputGate.java
+- **Role:** Central helper that exposes whether the paint, selection, or blueprint overlay mode is active so multiple patches can share the same guard rather than duplicating the check. It keeps UI gating logic in one place and lets other patches mimic a “preview only” state without touching sunlight input files.
+- **Declares:** `colox.gridmod.input.PaintModeInputGate`.
+- **Key dependencies:** Reads overlay mode flags from `BlueprintPlacement`, `PaintState`, and `SelectionState`; used by input hooks to decide whether to skip downstream attacks.
+
+### RunClientAttackBlockPatch.java / RunClientControllerAttackBlockPatch.java
+- **Role:** ByteBuddy patches on `PlayerMob.runClientAttack(...)` and `runClientControllerAttack(...)` that skip the original methods whenever `PaintModeInputGate` reports an active overlay, effectively disabling all weapon/item usage while keeping walking intact.
+- **Declares:** `colox.gridmod.input.RunClientAttackBlockPatch` and `colox.gridmod.input.RunClientControllerAttackBlockPatch`.
+- **Key dependencies:** Both depend solely on `PaintModeInputGate` to determine whether to short-circuit the call and thus act as the global “lock” for player actions.
+
 ## overlay
 
 ### GridToggle.java
@@ -122,6 +132,7 @@ This document inventories the Java sources under `src/main/java/colox/gridmod`, 
 - **Role:** Computes OS-specific directories for GridMod data (settings, paint state, blueprints) and ensures they exist on disk.【F:src/main/java/colox/gridmod/util/ConfigPaths.java†L1-L37】
 - **Declares:** `colox.gridmod.util.ConfigPaths`.
 - **Key dependencies:** Java NIO `Path`, `Paths`, and `Files`; consumed by `GridConfig`, `PaintState`, and `PaintBlueprints`.
+- **World helpers:** Added `worldDir(...)`, `worldPaintFile(...)`, and `worldSettingsFile(...)` so paint/settlement files can live under `mods-data/colox.gridmod/worlds/<worldID>/`, giving each save its own state without polluting the shared profile folder; these helpers are keyed via `WorldKeyProvider` so the current world can access the correct path at runtime.
 
 ## Additional entry points
 
@@ -137,7 +148,7 @@ This document inventories the Java sources under `src/main/java/colox/gridmod`, 
 
 ## Coverage checklist
 
-All Java files under `src/main/java/colox/gridmod/config`, `input`, `overlay`, `paint`, `ui`, and `util` are documented above. Files listed by `find` in these packages: GridConfig, GridKeybinds, GridToggle, GridStyleControls, SettlementBoundsOverlay, GridDrawable, GridOverlayHook, PaintState, SelectionState, Painter, MouseTileUtil, BlueprintPlacement, PaintDrawable, PaintControls, PaintBlueprints, GridUIForm, UiParts, GridTab, GridUI, PaintTab, ConfigPaths. Each entry is described in its respective section to ensure no class from the targeted packages is omitted.【F:src/main/java/colox/gridmod/config/GridConfig.java†L1-L330】【F:src/main/java/colox/gridmod/util/ConfigPaths.java†L1-L37】
+All Java files under `src/main/java/colox/gridmod/config`, `input`, `overlay`, `paint`, `ui`, and `util` are documented above. Files listed by `find` in these packages: GridConfig, GridKeybinds, PaintModeInputGate, RunClientAttackBlockPatch, RunClientControllerAttackBlockPatch, GridToggle, GridStyleControls, SettlementBoundsOverlay, GridDrawable, GridOverlayHook, PaintState, SelectionState, Painter, MouseTileUtil, BlueprintPlacement, PaintDrawable, PaintControls, PaintBlueprints, GridUIForm, UiParts, GridTab, GridUI, PaintTab, ConfigPaths, WorldKeyProvider. Each entry is described in its respective section to ensure no class from the targeted packages is omitted.【F:src/main/java/colox/gridmod/config/GridConfig.java†L1-L330】【F:src/main/java/colox/gridmod/util/ConfigPaths.java†L1-L37】
 
 ## Supporting docs
 - [`docs/vanilla_index.md`](vanilla_index.md) – Necesse engine class cheat sheet used for planning UI/registry/level touch points.

@@ -28,6 +28,20 @@ public final class ConfigPaths {
     public static Path paintFile()    { return modDataDir().resolve("paint_state.txt"); }
     public static Path settingsFile() { return modDataDir().resolve("grid_settings.txt"); }
 
+    public static Path worldDir(String worldKey) {
+        Path p = modDataDir().resolve("worlds").resolve(worldKey == null ? "global" : worldKey);
+        try { Files.createDirectories(p); } catch (Exception ignored) {}
+        return p;
+    }
+
+    public static Path worldPaintFile(String worldKey) {
+        return worldDir(worldKey).resolve("paint_state.txt");
+    }
+
+    public static Path worldSettingsFile(String worldKey) {
+        return worldDir(worldKey).resolve("grid_settings.txt");
+    }
+
     /** …/mods-data/colox.gridmod/blueprints/ */
     public static Path blueprintsDir() {
         Path p = modDataDir().resolve("blueprints");

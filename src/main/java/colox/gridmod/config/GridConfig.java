@@ -1,6 +1,9 @@
 package colox.gridmod.config;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 
 import necesse.engine.save.LoadData;
@@ -9,6 +12,7 @@ import colox.gridmod.paint.PaintCategory;
 import colox.gridmod.paint.PaintLayerFilter;
 import colox.gridmod.paint.SelectionState;
 import colox.gridmod.util.ConfigPaths;
+import colox.gridmod.util.WorldKeyProvider;
 
 public final class GridConfig {
 
@@ -83,7 +87,8 @@ public final class GridConfig {
         80, 112, 144, 176, 208, 240, 272
     };
 
-    private static final File CONFIG_FILE = ConfigPaths.settingsFile().toFile();
+private static String currentWorldKey = "global";
+private static File configFile = ConfigPaths.worldSettingsFile(currentWorldKey).toFile();
     private static boolean dirty = false;
 
     private GridConfig() {}
@@ -92,11 +97,31 @@ public final class GridConfig {
     public static void saveIfDirty() { if (dirty) save(); }
 
     public static void load() {
+        loadForWorld(WorldKeyProvider.currentWorldKey());
+    }
+
+    public static void ensureWorldSynced() {
+        String key = WorldKeyProvider.currentWorldKey();
+        if (!key.equals(currentWorldKey)) {
+            loadForWorld(key);
+        }
+    }
+
+    private static void loadForWorld(String worldKey) {
+        currentWorldKey = (worldKey == null || worldKey.isBlank()) ? "global" : worldKey;
+        Path path = ConfigPaths.worldSettingsFile(currentWorldKey);
+        configFile = path.toFile();
+        if (!configFile.exists()) {
+            File legacy = ConfigPaths.settingsFile().toFile();
+            if (legacy.exists()) {
+                try { Files.copy(legacy.toPath(), configFile.toPath()); } catch (IOException ignored) {}
+            }
+        }
         try {
             resetPaintCategoryColors();
             resetHoverCategoryVisibility();
-            if (!CONFIG_FILE.exists()) { save(); return; }
-            LoadData ld = new LoadData(CONFIG_FILE);
+            if (!configFile.exists()) { save(); return; }
+            LoadData ld = new LoadData(configFile);
 
             tileSize = ld.getInt("tileSize", tileSize);
 
@@ -204,6 +229,7 @@ public final class GridConfig {
     }
 
     public static void save() {
+        ensureWorldSynced();
         try {
             clamp();
             SaveData sd = new SaveData("gridmod");
@@ -275,7 +301,7 @@ public final class GridConfig {
             sd.addInt("settlementFlagTx", settlementFlagTx);
             sd.addInt("settlementFlagTy", settlementFlagTy);
 
-            sd.saveScript(CONFIG_FILE);
+            sd.saveScript(configFile);
             dirty = false;
         } catch (Throwable t) {
             t.printStackTrace();
@@ -306,7 +332,7 @@ public final class GridConfig {
         selectionR = clamp01(selectionR); selectionG = clamp01(selectionG); selectionB = clamp01(selectionB); selectionAlpha = clamp01(selectionAlpha);
         bpGhostR = clamp01(bpGhostR); bpGhostG = clamp01(bpGhostG); bpGhostB = clamp01(bpGhostB); bpGhostAlpha = clamp01(bpGhostAlpha);
 
-        if (selectedBlueprint == null || selectedBlueprint.isBlank()) selectedBlueprint = "quick";
+        if (selectedBlueprint == null) selectedBlueprint = "quick";
         if (selectedGlobalBlueprint == null || selectedGlobalBlueprint.isBlank()) selectedGlobalBlueprint = "global_quick";
 
         uiOpacity = clamp01(uiOpacity);

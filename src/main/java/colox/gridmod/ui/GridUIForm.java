@@ -352,7 +352,7 @@ public class GridUIForm extends Form {
             boolean next = ((FormCheckBox)e.from).checked;
             boolean prev = GridConfig.settlementEnabled;
             if (next && !prev && !GridConfig.hasSettlementFlag()) {
-                System.out.println("[GridMod] Settlement flag not set; use the keybind to pick a location before enabling.");
+                // No flag; user must pick a location before enabling settlement bounds.
             }
             GridConfig.settlementEnabled = next;
             GridConfig.markDirty(); GridConfig.saveIfDirty();

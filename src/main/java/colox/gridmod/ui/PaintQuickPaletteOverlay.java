@@ -874,8 +874,8 @@ public final class PaintQuickPaletteOverlay {
             }
             boolean ok = PaintBlueprints.deleteBlueprint(name);
             if (ok) {
-                currentBlueprint = "quick";
-                GridConfig.selectedBlueprint = currentBlueprint;
+                currentBlueprint = "";
+                GridConfig.selectedBlueprint = "";
                 GridConfig.markDirty(); GridConfig.saveIfDirty();
                 refreshBlueprintOptions();
                 statusLabel.setText("Deleted '" + name + "'");
@@ -899,19 +899,28 @@ public final class PaintQuickPaletteOverlay {
 
         private void refreshBlueprintOptions() {
             dropdown.options.clear();
+            dropdown.options.add("", new StaticMessage("None"));
             String[] names = PaintBlueprints.listBlueprints();
-            if (names.length == 0) {
-                names = new String[]{"quick"};
-            }
             currentBlueprint = GridConfig.selectedBlueprint;
-            if (currentBlueprint == null || currentBlueprint.isBlank()) currentBlueprint = names[0];
-            boolean found = false;
+            if (currentBlueprint == null) currentBlueprint = "";
+            currentBlueprint = currentBlueprint.trim();
+
+            boolean wasCleared = currentBlueprint.isEmpty();
+            boolean found = wasCleared;
+
             for (String n : names) {
                 dropdown.options.add(n, new StaticMessage(n));
-                if (n.equals(currentBlueprint)) found = true;
+                if (!found && n.equals(currentBlueprint)) {
+                    found = true;
+                }
             }
-            if (!found) currentBlueprint = names[0];
-            dropdown.setSelected(currentBlueprint, new StaticMessage(currentBlueprint));
+
+            if (!found && !wasCleared && names.length > 0) {
+                currentBlueprint = names[0];
+                found = true;
+            }
+
+            dropdown.setSelected(currentBlueprint, new StaticMessage(currentBlueprint.isEmpty() ? "None" : currentBlueprint));
             statusLabel.setText("");
             if (renameInput != null) renameInput.setText(currentBlueprint);
         }
@@ -1086,8 +1095,6 @@ public final class PaintQuickPaletteOverlay {
             form.setHidden(false);
             return true;
         }
-        System.out.println("[GridMod] PaintQuickPaletteOverlay: failed to attach form to manager "
-                + mgr.getClass().getName());
         return false;
     }
 
@@ -1109,7 +1116,6 @@ public final class PaintQuickPaletteOverlay {
             if (!invoke(managerRef, "addComponent", formRef)) {
                 Object list = getComponentList(managerRef);
                 if (list == null || !tryAddToList(list, formRef)) {
-                    System.out.println("[GridMod] PaintQuickPaletteOverlay: scheduled add failed.");
                     return;
                 }
             }

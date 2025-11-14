@@ -18,6 +18,7 @@ import necesse.level.maps.Level;
 import necesse.level.maps.levelData.settlementData.NetworkSettlementData;
 
 import java.lang.reflect.Method;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 
 public final class PaintControls {
@@ -30,11 +31,15 @@ public final class PaintControls {
 
     private static String currentBlueprintName() {
         String n = colox.gridmod.config.GridConfig.selectedBlueprint;
-        return (n == null || n.isBlank()) ? "quick" : n.trim();
+        if (n == null) return null;
+        String trimmed = n.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     public static void tick(Level level, GameCamera camera, PlayerMob player) {
         PaintQuickPaletteOverlay.tick(PaintState.enabled);
+        GridConfig.ensureWorldSynced();
+        PaintState.ensureWorldSynced();
 
         currentLevel = level;
         currentPlayer = player;
@@ -81,12 +86,11 @@ public final class PaintControls {
         if (GridKeybinds.PAINT_BP_SAVE != null && GridKeybinds.PAINT_BP_SAVE.isPressed()) {
             PaintBlueprints.saveBlueprint(bpName);
         }
-        if (GridKeybinds.PAINT_BP_LOAD != null && GridKeybinds.PAINT_BP_LOAD.isPressed()) {
+        if (bpName != null && GridKeybinds.PAINT_BP_LOAD != null && GridKeybinds.PAINT_BP_LOAD.isPressed()) {
             List<BlueprintPlacement.BlueprintTile> rel = PaintBlueprints.loadRelative(bpName);
             if (!rel.isEmpty()) {
                 BlueprintPlacement.begin(rel);
                 if (input.isKeyDown(-100)) suppressPaintUntilLmbUp = true;
-                System.out.println("[GridMod] Placement mode ON for '" + bpName + "'");
             }
         }
 
@@ -101,7 +105,6 @@ public final class PaintControls {
             if (rightClickPress) {
                 BlueprintPlacement.cancel();
                 if (input.isKeyDown(-100)) suppressPaintUntilLmbUp = true;
-                System.out.println("[GridMod] Placement cancelled (RMB).");
                 return;
             }
 
@@ -128,8 +131,6 @@ public final class PaintControls {
                     PaintState.markDirty();
                     PaintState.saveIfDirty();
                     suppressPaintUntilLmbUp = true;
-                    System.out.println("[GridMod] Blueprint placed at " + tile[0] + "," + tile[1]
-                            + " tiles=" + abs.size() + " (multi-stamp active; RMB to cancel)");
                 }
             }
             if (uiBlock) {
@@ -241,7 +242,6 @@ public final class PaintControls {
 
     public static void placeAtStoredFlagAndEnable() {
         if (!GridConfig.hasSettlementFlag()) {
-            System.out.println("[GridMod] Cannot place settlement: no flag location stored. Use the keybind to set it.");
             return;
         }
         enableSettlementAtFlag();
@@ -249,7 +249,6 @@ public final class PaintControls {
 
     public static void placeAtCurrentSettlementFlag() {
         if (!syncFlagFromCurrentSettlement()) {
-            System.out.println("[GridMod] Could not find a settlement flag here. Stand inside a settlement and try again.");
             return;
         }
         enableSettlementAtFlag();
@@ -259,8 +258,6 @@ public final class PaintControls {
         GridConfig.settlementEnabled = true;
         GridConfig.markDirty();
         GridConfig.saveIfDirty();
-        System.out.println("[GridMod] Settlement placed+enabled at flagTile=("
-                + GridConfig.settlementFlagTx + "," + GridConfig.settlementFlagTy + ")");
     }
 
     private static void handleSettlementKeys(Input input) {
@@ -280,15 +277,11 @@ public final class PaintControls {
             }
             GridConfig.markDirty();
             GridConfig.saveIfDirty();
-            System.out.println("[GridMod] Settlement overlay = " + GridConfig.settlementEnabled
-                    + " flagTile=(" + GridConfig.settlementFlagTx + "," + GridConfig.settlementFlagTy + ")");
         }
 
         if (colox.gridmod.input.GridKeybinds.SETTLEMENT_TIER_CYCLE != null
                 && colox.gridmod.input.GridKeybinds.SETTLEMENT_TIER_CYCLE.isPressed()) {
             GridConfig.cycleSettlementTier();
-            System.out.println("[GridMod] Settlement tier -> " + GridConfig.settlementTier
-                    + " (chunks per side=" + GridConfig.currentTierChunks() + ")");
         }
     }
 
@@ -365,7 +358,12 @@ public final class PaintControls {
         InputPosition pos = window.mousePos();
         if (pos == null) return false;
         FormManager manager = getCurrentFormManager();
-        return manager != null && manager.isMouseOver(pos);
+        if (manager == null) return false;
+        try {
+            return manager.isMouseOver(pos);
+        } catch (ConcurrentModificationException ignored) {
+            return false;
+        }
     }
 
     // --- Pause detection via reflection (safe fallback = false) ---

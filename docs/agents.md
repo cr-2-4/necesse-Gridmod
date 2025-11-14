@@ -12,6 +12,7 @@ This file documents the expectations and public surface area of GridMod so futur
 - Hook into Necesse only via supported extension points (registered controls, ByteBuddy patches, `FormManager`/`WindowManager`) and keep additional reflection centralized in helper classes (`GridUI`, `PaintQuickPaletteOverlay`). Avoid inventing new reflection-heavy plumbing unless there’s no public API.
 - Respect Necesse UI state: the paint tick loop immediately returns if `GridUI.isOpen()` or the game is paused, and input is gate-checked via `SelectionState`, `PaintQuickPaletteOverlay`, and the render overlay toggle system.
 - Register all keybinds in `GridMod.init()` by calling `GridKeybinds.register()` once; rely on the shared `Control` fields for polling so that hotkeys stay synchronized with the Quick Palette buttons.
+- When pausing gameplay for the overlay, gate actions at the `PlayerMob.runClientAttack`/`runClientControllerAttack` entry points rather than mutating individual `Item` behavior, letting movement run unimpeded while attacks/tools remain blocked.
 
 ## Public API surface
 
@@ -21,6 +22,9 @@ This file documents the expectations and public surface area of GridMod so futur
 - `colox.gridmod.ui.GridUI` / `GridUIForm` / `UiParts` – reflection-backed helpers for creating, showing, and positioning the Grid UI form through `FormManager`; `GridUI$$` is the “UI server” that ensures only one form per state manager exists.
 - `colox.gridmod.ui.PaintQuickPaletteOverlay` – sidebar overlay built with Necesse `Form` components; it aims to mimic Necesse menus and exposes helpers like `tick()`, `isMouseOverUi()`, and `consumeToggleClick()` for the paint loop.
 - `colox.gridmod.paint.PaintControls` – per-frame tick called from `GridOverlayHook`; contains painting, selection, blueprint placement, and settlement shortcut logic plus UI-safe gates.
+- `colox.gridmod.util.WorldKeyProvider` – computes the world GUID key used to locate `paint_state.txt`/`grid_settings.txt` under `mods-data/colox.gridmod/worlds/<worldID>/`, so each save gets its own paint/settlement data while legacy files stay untouched.
+- `colox.gridmod.input.PaintModeInputGate` – centralized helper that reports whether paint, selection, or blueprint controls are active so other patches can reuse the “overlay is active” check.
+- `colox.gridmod.input.RunClientAttackBlockPatch` / `colox.gridmod.input.RunClientControllerAttackBlockPatch` – ByteBuddy hooks on the client attack entry points that skip the original implementations whenever `PaintModeInputGate` says the overlay is active, ensuring no weapon/item use slips past the guard.
 - `colox.gridmod.overlay.GridOverlayHook` – ByteBuddy patch on `Mob.addDrawables` that adds `GridDrawable`, `SettlementBoundsOverlay`, and `PaintDrawable` for the local player, and that calls `PaintControls.tick(...)`.
 - `colox.gridmod.config.GridConfig` & `colox.gridmod.paint.PaintState` – the in-memory config/state models. Both expose `load()`/`saveIfDirty()` and static getters/setters, so other modules consume the shared state.
 - `colox.gridmod.util.ConfigPaths` – centralized knowledge of `mods-data/colox.gridmod`; exposes `modDataDir()`, `settingsFile()`, `paintFile()`, `blueprintsDir()`, and `globalBlueprintsDir()`.

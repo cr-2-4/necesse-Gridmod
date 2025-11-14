@@ -29,7 +29,6 @@ public final class GridUI {
     public static void ensureBuiltAndShow() {
         Object mgr = getActiveFormManager();
         if (mgr == null) {
-            System.out.println("[GridUI] No active FormManager (state=null).");
             return;
         }
 
@@ -43,7 +42,6 @@ public final class GridUI {
                     Object list = getFieldVal(mgr, "components");
                     if (list == null) list = callInstance(mgr, "getComponentList");
                     if (list == null || !tryAddToList(list, form)) {
-                        System.out.println("[GridUI] Could not add form to manager.");
                         return;
                     }
                 }
@@ -112,7 +110,6 @@ public final class GridUI {
         try {
             Method setTimeout = findMethod(mgr.getClass(), "setTimeout", Runnable.class, long.class);
             if (setTimeout == null) {
-                System.out.println("[GridUI] setTimeout(Runnable,long) not on " + mgr.getClass().getName());
                 return false;
             }
             final Object managerRef = mgr;
@@ -122,7 +119,6 @@ public final class GridUI {
                     Object list = getFieldVal(managerRef, "components");
                     if (list == null) list = callInstance(managerRef, "getComponentList");
                     if (list == null || !tryAddToList(list, formRef)) {
-                        System.out.println("[GridUI] Scheduled add failed.");
                         return;
                     }
                 }
@@ -133,10 +129,8 @@ public final class GridUI {
             };
             setTimeout.setAccessible(true);
             setTimeout.invoke(mgr, r, 0L);
-            System.out.println("[GridUI] Scheduled form add via setTimeout(…,0) on " + mgr.getClass().getName());
             return true;
         } catch (Throwable t) {
-            System.out.println("[GridUI] scheduleAdd FAILED: " + t);
             return false;
         }
     }
@@ -155,17 +149,14 @@ public final class GridUI {
             if (setPosMiddle != null) {
                 setPosMiddle.setAccessible(true);
                 setPosMiddle.invoke(form, w / 2, h / 2);
-                System.out.println("[GridUI] Centered form via setPosMiddle(" + (w/2) + "," + (h/2) + ")");
             }
         } catch (Throwable t) {
-            System.out.println("[GridUI] centerForm FAILED: " + t);
         }
     }
 
     private static boolean tryAddToList(Object list, Object form) {
         String[] m = { "addComponent", "add", "addLast", "push", "offer" };
         for (String name : m) if (invokeLogged(list, name, form)) return true;
-        System.out.println("[GridUI] No usable add-method on " + list.getClass().getName());
         return false;
     }
 
@@ -215,11 +206,9 @@ public final class GridUI {
         try {
             Class<?> c = Class.forName(cls);
             Method m = findMethod(c, method);
-            if (m == null) { System.out.println("[GridUI] " + cls + "." + method + "() MISSING"); return null; }
             m.setAccessible(true);
             return m.invoke(null);
         } catch (Throwable t) {
-            System.out.println("[GridUI] " + cls + "." + method + "() FAILED: " + t);
             return null;
         }
     }
@@ -228,11 +217,9 @@ public final class GridUI {
         if (obj == null) return null;
         try {
             Method m = findMethod(obj.getClass(), method);
-            if (m == null) { System.out.println("[GridUI] " + obj.getClass().getName() + "." + method + "() MISSING"); return null; }
             m.setAccessible(true);
             return m.invoke(obj);
         } catch (Throwable t) {
-            System.out.println("[GridUI] " + obj.getClass().getName() + "." + method + "() FAILED: " + t);
             return null;
         }
     }
@@ -246,7 +233,6 @@ public final class GridUI {
             f.setAccessible(true);
             return f.get(obj);
         } catch (Throwable t) {
-            System.out.println("[GridUI] " + obj.getClass().getName() + "." + field + " FAILED: " + t);
             return null;
         }
     }
@@ -266,14 +252,12 @@ public final class GridUI {
                 chosen = m; break;
             }
             if (chosen == null) {
-                System.out.println("[GridUI] " + obj.getClass().getName() + "." + method + "(…) MISSING");
                 return false;
             }
             chosen.setAccessible(true);
             chosen.invoke(obj, args);
             return true;
         } catch (Throwable t) {
-            System.out.println("[GridUI] " + obj.getClass().getName() + "." + method + "(…) FAILED: " + t);
             return false;
         }
     }
