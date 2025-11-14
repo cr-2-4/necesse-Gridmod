@@ -132,6 +132,12 @@ This document inventories the Java sources under `src/main/java/colox/gridmod`, 
 - **Role:** Computes OS-specific directories for GridMod data (settings, paint state, blueprints) and ensures they exist on disk.【F:src/main/java/colox/gridmod/util/ConfigPaths.java†L1-L37】
 - **Declares:** `colox.gridmod.util.ConfigPaths`.
 - **Key dependencies:** Java NIO `Path`, `Paths`, and `Files`; consumed by `GridConfig`, `PaintState`, and `PaintBlueprints`.
+- **World helpers:** Added `worldDir(...)`, `worldPaintFile(...)`, and `worldSettingsFile(...)` so paint/settlement data can optionally be isolated per-save; only `PaintState` currently uses these helpers to store `paint_state.txt` inside `mods-data/colox.gridmod/worlds/<worldID>/`.
+
+### WorldKeyProvider.java
+- **Role:** Reads the active world GUID from `MainGame.getClient().getWorldUniqueID()` so any subsystem can derive the correct world-specific directory key. It falls back to `"global"` early in startup when the world ID isn’t yet known.
+- **Declares:** `colox.gridmod.util.WorldKeyProvider`.
+- **Key dependencies:** `necesse.engine.GlobalData`, `MainGame`, and the network client; used by `PaintState` to pick the per-world `paint_state.txt` path.
 - **World helpers:** Added `worldDir(...)`, `worldPaintFile(...)`, and `worldSettingsFile(...)` so paint/settlement files can live under `mods-data/colox.gridmod/worlds/<worldID>/`, giving each save its own state without polluting the shared profile folder; these helpers are keyed via `WorldKeyProvider` so the current world can access the correct path at runtime.
 
 ## Additional entry points

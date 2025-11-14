@@ -38,7 +38,6 @@ public final class PaintControls {
 
     public static void tick(Level level, GameCamera camera, PlayerMob player) {
         PaintQuickPaletteOverlay.tick(PaintState.enabled);
-        GridConfig.ensureWorldSynced();
         PaintState.ensureWorldSynced();
 
         currentLevel = level;

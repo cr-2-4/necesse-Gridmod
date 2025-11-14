@@ -1,9 +1,6 @@
 package colox.gridmod.config;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 
 import necesse.engine.save.LoadData;
@@ -12,7 +9,6 @@ import colox.gridmod.paint.PaintCategory;
 import colox.gridmod.paint.PaintLayerFilter;
 import colox.gridmod.paint.SelectionState;
 import colox.gridmod.util.ConfigPaths;
-import colox.gridmod.util.WorldKeyProvider;
 
 public final class GridConfig {
 
@@ -87,8 +83,7 @@ public final class GridConfig {
         80, 112, 144, 176, 208, 240, 272
     };
 
-private static String currentWorldKey = "global";
-private static File configFile = ConfigPaths.worldSettingsFile(currentWorldKey).toFile();
+    private static final File CONFIG_FILE = ConfigPaths.settingsFile().toFile();
     private static boolean dirty = false;
 
     private GridConfig() {}
@@ -97,31 +92,11 @@ private static File configFile = ConfigPaths.worldSettingsFile(currentWorldKey).
     public static void saveIfDirty() { if (dirty) save(); }
 
     public static void load() {
-        loadForWorld(WorldKeyProvider.currentWorldKey());
-    }
-
-    public static void ensureWorldSynced() {
-        String key = WorldKeyProvider.currentWorldKey();
-        if (!key.equals(currentWorldKey)) {
-            loadForWorld(key);
-        }
-    }
-
-    private static void loadForWorld(String worldKey) {
-        currentWorldKey = (worldKey == null || worldKey.isBlank()) ? "global" : worldKey;
-        Path path = ConfigPaths.worldSettingsFile(currentWorldKey);
-        configFile = path.toFile();
-        if (!configFile.exists()) {
-            File legacy = ConfigPaths.settingsFile().toFile();
-            if (legacy.exists()) {
-                try { Files.copy(legacy.toPath(), configFile.toPath()); } catch (IOException ignored) {}
-            }
-        }
         try {
             resetPaintCategoryColors();
             resetHoverCategoryVisibility();
-            if (!configFile.exists()) { save(); return; }
-            LoadData ld = new LoadData(configFile);
+            if (!CONFIG_FILE.exists()) { save(); return; }
+            LoadData ld = new LoadData(CONFIG_FILE);
 
             tileSize = ld.getInt("tileSize", tileSize);
 
@@ -229,7 +204,6 @@ private static File configFile = ConfigPaths.worldSettingsFile(currentWorldKey).
     }
 
     public static void save() {
-        ensureWorldSynced();
         try {
             clamp();
             SaveData sd = new SaveData("gridmod");
@@ -301,7 +275,7 @@ private static File configFile = ConfigPaths.worldSettingsFile(currentWorldKey).
             sd.addInt("settlementFlagTx", settlementFlagTx);
             sd.addInt("settlementFlagTy", settlementFlagTy);
 
-            sd.saveScript(configFile);
+            sd.saveScript(CONFIG_FILE);
             dirty = false;
         } catch (Throwable t) {
             t.printStackTrace();
