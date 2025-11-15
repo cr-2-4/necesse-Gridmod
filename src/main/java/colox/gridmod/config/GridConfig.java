@@ -18,6 +18,7 @@ public final class GridConfig {
 
     public static boolean gridEnabled = true;
 
+    // Start grid lines fairly transparent so they don't overpower the world view.
     public static float lineAlpha = 0.25f;
     public static float r = 1f, g = 1f, b = 1f;
 
