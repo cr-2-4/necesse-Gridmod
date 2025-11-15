@@ -46,6 +46,7 @@ The jar is emitted to `build/jar/GridMod-<gameVersion>-<modVersion>.jar`. Copy t
 
 ## Documentation & roadmap
 
+- `docs/controls.md` – full controls & usage guide (painting, layers, blueprints, settlement tools).
 - `docs/workshop-description.md` – copy-ready Workshop text with full feature rundown.
 - `docs/release-notes.md` – change log per version.
 - `docs/todo.md` – roadmap items and future feature ideas (shared paint, advanced brushes, etc.).

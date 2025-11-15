@@ -63,7 +63,7 @@ GridMod separates three blueprint types and exposes them through the quick palet
 
 Blueprint placement works just like normal paint placement:
 - Use the quick palette buttons or blueprint hotkeys to **Rotate CW / Rotate CCW / Flip** while the ghost is active.
-- Left‑click stamps the transformed blueprint into the world; right‑click cancels placement.
+- Left-click stamps the transformed blueprint into the world; right-click cancels placement.
 
 ### Settlement helpers
 - Toggle a **settlement bounds** overlay that shows the current tier size as a configurable rectangle.
@@ -103,3 +103,8 @@ Blueprint placement works just like normal paint placement:
 | **Settlement: Cycle tier** | Cycles the settlement tier size used for bounds. |
 
 All of these controls start unbound so you can map them to whatever layout makes sense for you. Bind a few essentials first, then add more as you start using the advanced features.
+
+---
+
+Full controls guide: https://github.com/cr-2-4/necesse-Gridmod/blob/main/docs/controls.md  
+Source & issue tracker: https://github.com/cr-2-4/necesse-Gridmod
