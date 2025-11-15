@@ -24,6 +24,7 @@ You can bind more later (blueprint hotkeys, settlement tools), but those five ma
 - Turn **paint logic** on/off (`Paint: Toggle`) without touching your saved data.
 - Show/hide the **paint overlay** (`Paint: Toggle overlay`) while still painting “blind” if you want.
 - Pick a **paint category** (floors, walls, doors, lighting, furniture, etc.) in the Grid UI or the quick palette.
+- Every paint stroke lives on one of **three layers** (bottom, middle, top) so you can stack walls over floors or add detail passes without erasing your base layout. Switch layers from the quick palette while painting, and use the selection layer dropdown to isolate, copy, or clear individual layers. Lower layers remain visible underneath higher ones, so you can rough-in roads, then overlay walls, then sprinkle props without touching earlier work.
 - Adjust **brush size** (1–32) and see a preview square before placing tiles.
 - Hold **Paint: Erase (hold)** or use right‑click to erase instead of paint.
 - Change per‑category colors (grid lines, paint, selection, blueprint ghost) in the color tabs of the Grid UI.

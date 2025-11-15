@@ -50,6 +50,7 @@ replay_pid*
 
 # Internal docs (keep private)
 docs/agents.md
+docs/release-checklist.md
 
 # Logs
 /latest-crash.log
